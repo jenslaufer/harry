@@ -2,10 +2,10 @@
   "auftraege": 726,
   "basis": "https://jenslaufer.com/harry/",
   "codezeilen": 18705,
-  "commits_assistant": 5006,
+  "commits_assistant": 5008,
   "cpu": "AMD Ryzen 5 3500U",
   "kerne": 8,
-  "koautor_commits": 1814,
+  "koautor_commits": 1815,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -18,10 +18,10 @@
   "prs": 956,
   "ram_gb": 12,
   "reise": {
-    "gemessen": 5,
-    "juengste_minuten": 17,
-    "median_minuten": 66,
-    "schnellste_minuten": 17
+    "gemessen": 6,
+    "juengste_minuten": 7,
+    "median_minuten": 63,
+    "schnellste_minuten": 7
   },
   "sitzungen": 2333,
   "skills": 118,
