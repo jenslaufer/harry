@@ -1,0 +1,326 @@
+/* harry.jenslaufer.com
+   Papier und Maschine: der Fliesstext liegt auf warmem Papier, alles Gemessene
+   auf dunklen Baendern in Monospace. Der Wechsel ist die einzige Gliederung,
+   die die Seite braucht — es gibt keine Kacheln, keine Symbole, keine Farben
+   ausser dem einen Bernstein der Statusleuchte. */
+
+:root {
+  --papier: #f6f4ef;
+  --tinte: #17161a;
+  --gedimmt: #57545d;
+  --linie: #ddd7cb;
+  --akzent: #a8481a;
+  --leuchte: #e08a3c;
+  --maschine: #17161a;
+  --maschine-text: #efeadf;
+  --maschine-dim: #8b8578;
+  --bahn: 41rem;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--tinte);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  font-feature-settings: "kern", "liga";
+  -webkit-font-smoothing: antialiased;
+}
+
+.bahn {
+  max-width: var(--bahn);
+  margin-inline: auto;
+  padding-inline: 1.5rem;
+}
+
+p { margin: 0 0 1.15em; hyphens: auto; }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--akzent); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+a:hover { color: var(--tinte); }
+
+code {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  background: #ebe7de;
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+}
+
+/* ------------------------------------------------------------------ Kopf */
+
+.kopf { padding: clamp(3.5rem, 12vw, 7rem) 1.5rem clamp(2.5rem, 7vw, 4rem); }
+
+.kicker {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gedimmt);
+  margin: 0 0 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.kicker.hell { color: var(--maschine-dim); }
+
+.led {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--leuchte);
+  box-shadow: 0 0 0 0 rgba(224, 138, 60, 0.55);
+  animation: puls 3.2s ease-out infinite;
+  flex: none;
+}
+@keyframes puls {
+  0%   { box-shadow: 0 0 0 0 rgba(224, 138, 60, 0.5); }
+  60%  { box-shadow: 0 0 0 9px rgba(224, 138, 60, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(224, 138, 60, 0); }
+}
+@media (prefers-reduced-motion: reduce) { .led { animation: none; } }
+
+h1 {
+  font-family: Fraunces, Georgia, serif;
+  font-optical-sizing: auto;
+  /* 300 wirkt bei dieser Groesse haarduenn: der Querbalken des H verschwindet
+     und "Harry" liest sich als "Iarry". 500 traegt. */
+  font-weight: 500;
+  font-size: clamp(4.5rem, 20vw, 10rem);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  margin: 0 0 clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.lead {
+  font-size: clamp(1.125rem, 2.4vw, 1.32rem);
+  line-height: 1.55;
+  max-width: 34rem;
+  color: #26242b;
+}
+
+/* --------------------------------------------------------------- Abschnitt */
+
+main > section { padding-block: clamp(2.75rem, 7vw, 4.5rem); }
+main > section.bahn { padding-inline: 1.5rem; }
+
+h2 {
+  font-family: Fraunces, Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-size: clamp(1.65rem, 4.4vw, 2.3rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.1rem;
+  text-wrap: balance;
+}
+
+/* ------------------------------------------------------------ Maschinenband */
+
+.band {
+  background: var(--maschine);
+  color: var(--maschine-text);
+  padding-block: clamp(2.5rem, 6vw, 4rem);
+}
+/* Die Maschinenbaender duerfen breiter laufen als der Fliesstext — sonst
+   liest sich die ganze Seite als eine einzige schmale Spalte. */
+.band > .bahn { max-width: 52rem; }
+.band h2, .band h3 { color: var(--maschine-text); }
+.band a { color: var(--leuchte); }
+
+.bandtext {
+  font-size: 0.97rem;
+  line-height: 1.6;
+  color: #cfc9bc;
+  max-width: 33rem;
+  margin-top: 1.6rem;
+}
+
+/* Zeitstreifen: 24 Stunden, die Weckzeiten leuchten. */
+.streifen {
+  display: flex;
+  gap: 2px;
+  align-items: flex-end;
+  height: 4.5rem;
+}
+.stunde {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.45rem;
+  height: 100%;
+}
+.stunde i {
+  display: block;
+  width: 100%;
+  height: 22%;
+  background: #33313a;
+  border-radius: 1px;
+}
+.stunde.an i {
+  height: 100%;
+  background: linear-gradient(180deg, var(--leuchte), #a8481a);
+  box-shadow: 0 0 14px rgba(224, 138, 60, 0.35);
+}
+.stunde b {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.62rem;
+  font-weight: 400;
+  color: var(--maschine-dim);
+  height: 0.8rem;
+}
+
+/* ------------------------------------------------------------------ Zahlen */
+
+.zahlen .gruppe {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--leuchte);
+  margin: 2.2rem 0 0.9rem;
+}
+.zahlen .gruppe:first-of-type { margin-top: 1.4rem; }
+
+/* Haarlinie statt Kaestchen: bei vier Kacheln in einer Dreierreihe blieben
+   sonst zwei leere graue Felder stehen, die wie fehlende Daten aussehen. */
+.gitter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  column-gap: 2rem;
+}
+.kachel {
+  border-top: 1px solid #35323b;
+  padding: 0.9rem 0 1.3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.kachel b {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(1.6rem, 5vw, 2.1rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.kachel span {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--maschine-dim);
+}
+
+.einschraenkung {
+  margin-top: 2rem;
+  padding-left: 1rem;
+  border-left: 2px solid #3a3740;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #b0aa9d;
+  max-width: 34rem;
+}
+
+/* ------------------------------------------------------------------ Fehler */
+
+ol.fehler {
+  list-style: none;
+  counter-reset: fehler;
+  margin: 2.2rem 0 0;
+  padding: 0;
+}
+ol.fehler li {
+  counter-increment: fehler;
+  border-top: 1px solid var(--linie);
+  padding-top: 1.5rem;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: 2.6rem 1fr;
+  column-gap: 0.75rem;
+}
+ol.fehler li::before {
+  content: counter(fehler, decimal-leading-zero);
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--akzent);
+  padding-top: 0.32rem;
+}
+ol.fehler h3 {
+  grid-column: 2;
+  font-family: Fraunces, Georgia, serif;
+  font-weight: 600;
+  font-size: 1.12rem;
+  line-height: 1.3;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+ol.fehler p { grid-column: 2; margin: 0; font-size: 0.985rem; }
+
+.schluss {
+  border-top: 1px solid var(--linie);
+  padding-top: 1.5rem;
+  font-size: 1.05rem;
+  max-width: 34rem;
+}
+
+/* ------------------------------------------------------------------ Zitat */
+
+blockquote {
+  margin: 1.6rem 0 1.8rem;
+  padding: 0 0 0 1.4rem;
+  border-left: 3px solid var(--leuchte);
+}
+blockquote p {
+  font-family: Fraunces, Georgia, serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-size: clamp(1.15rem, 3vw, 1.4rem);
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+/* --------------------------------------------------------------------- Wer */
+
+.wer { border-top: 1px solid var(--linie); }
+
+.knopfzeile { margin-top: 1.6rem; }
+.knopf {
+  display: inline-block;
+  padding: 0.7rem 1.35rem;
+  background: var(--tinte);
+  color: var(--papier);
+  text-decoration: none;
+  border-radius: 2px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+.knopf:hover { background: var(--akzent); color: var(--papier); }
+
+/* -------------------------------------------------------------------- Fuss */
+
+.fuss {
+  padding-block: 2.5rem 4rem;
+  border-top: 1px solid var(--linie);
+  color: var(--gedimmt);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  max-width: var(--bahn);
+}
+.fuss .klein { font-size: 0.82rem; }
+
+/* ------------------------------------------------------------------ Schmal */
+
+@media (max-width: 30rem) {
+  body { font-size: 1.02rem; }
+  .stunde b { font-size: 0.55rem; }
+  .streifen { height: 3.5rem; }
+  ol.fehler li { grid-template-columns: 1.9rem 1fr; column-gap: 0.5rem; }
+}

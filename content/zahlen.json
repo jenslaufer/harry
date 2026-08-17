@@ -1,0 +1,39 @@
+{
+  "auftraege": 726,
+  "basis": "https://jenslaufer.com/harry/",
+  "codezeilen": 18294,
+  "commits_assistant": 4995,
+  "cpu": "AMD Ryzen 5 3500U",
+  "kerne": 8,
+  "koautor_commits": 1810,
+  "koautor_repos": 68,
+  "nachrichten": 2169,
+  "pr_repos": 31,
+  "prs": 956,
+  "ram_gb": 12,
+  "sitzungen": 2330,
+  "skills": 118,
+  "stand": "2026-08-17",
+  "start": "2026-03-20",
+  "tage": 150,
+  "testfunktionen": 190,
+  "units": 14,
+  "weckzeiten_werktag": [
+    1,
+    2,
+    4,
+    5,
+    7,
+    11,
+    15,
+    19,
+    22,
+    23
+  ],
+  "weckzeiten_wochenende": [
+    9,
+    13,
+    17
+  ],
+  "werkzeuge": 89
+}
