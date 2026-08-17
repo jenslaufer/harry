@@ -87,6 +87,15 @@ KONDITIONEN = Path(
     os.environ.get("HARRY_KONDITIONEN", REPOS / "cv" / "data" / "konditionen.csv")
 )
 LINKEDIN = "https://www.linkedin.com/in/jenslaufer"
+# Die eine Adresse, die auf diese Seite GEHOERT — und die der eigene Waechter
+# bis zum 17.08. verhindert hat. `MUSTER` unten sperrt jede E-Mail-Adresse,
+# also auch diese; Folge: die Seite, die Buchungen ausloesen soll, bot als
+# einzigen Weg eine LinkedIn-Nachricht an, die ein Fremder ohne Verbindung gar
+# nicht schicken kann. Gemessen: `/harry/`, `/harry/en/` und
+# cv.jenslaufer.com enthielten zusammen null Adressen.
+# Sie steht seit Langem oeffentlich im Impressum auf solytics.de — sie hier zu
+# nennen legt nichts offen, was nicht schon offen ist.
+KONTAKT = "jens.laufer@solytics.de"
 LEBENSLAUF = "https://cv.jenslaufer.com/"
 # Dieselbe Regel wie bei REISE_SEITE_EN, und sie kam aus dem Fehler: bis zum
 # 17.08. gab es die englische Fassung nur als Daten (`cv/data/en/`), gebaut und
@@ -155,14 +164,31 @@ def lade_sperrliste(pfad: Path = None) -> list[str]:
     return woerter
 
 
+# Genau eine Adresse ist erlaubt, und sie wird VOR der Mustersuche aus dem Text
+# entfernt statt im Muster ausgenommen. Der Unterschied ist die Nachbarschaft:
+# so bleibt jede andere Adresse ein Treffer, auch eine, die sich nur in der
+# Endung unterscheidet (`…@solytics.com`) oder die erlaubte als Anfang traegt
+# (`…@solytics.de.example.com`). Die Nachschau verlangt, dass hinter der
+# Adresse nichts mehr steht, was zu ihr gehoeren koennte — ein Satzpunkt darf,
+# ein weiteres Namensteil nicht.
+# Die Grenze muss auf BEIDEN Seiten stehen: ohne die Vorschau nach links
+# entfernt `xjens.laufer@solytics.de` seinen eigenen Rumpf und laesst ein
+# nacktes `x` zurueck, das kein Muster mehr trifft — die Ausnahme haette dann
+# jede Adresse durchgelassen, die die erlaubte als Endstueck enthaelt.
+_ERLAUBTE_ADRESSE = re.compile(
+    r"(?<![\w.+-])" + re.escape(KONTAKT) + r"(?![\w-]|\.\w)", re.I
+)
+
+
 def pruefe_privat(text: str) -> None:
     """Wirft PrivatException, wenn etwas Personenbezogenes im Text steht."""
     klein = text.lower()
     for wort in GESPERRT:
         if wort in klein:
             raise PrivatException("gesperrtes Wort im Text (Liste ausserhalb des Repos)")
+    pruefbar = _ERLAUBTE_ADRESSE.sub("", text)
     for muster, name in MUSTER:
-        treffer = re.search(muster, text)
+        treffer = re.search(muster, pruefbar)
         if treffer:
             raise PrivatException(f"{name} im Text: {treffer.group(0)}")
 
@@ -662,9 +688,12 @@ def _buchen_abschnitt_en(konditionen: dict | None) -> str:
      the planet.</p>
   {konditionen_html}
   <p class="knopfzeile">
-    <a class="knopf" href="{LINKEDIN}">Message on LinkedIn</a>
+    <a class="knopf" href="mailto:{KONTAKT}?subject=Harness%20engineering">Write an email</a>
+    <a class="knopf knopf--leise" href="{LINKEDIN}">Message on LinkedIn</a>
     <a class="knopf knopf--leise" href="{lebenslauf}">See the CV{sprachnote}</a>
   </p>
+  <p class="adresszeile">Or straight to the inbox:
+     <a href="mailto:{KONTAKT}">{KONTAKT}</a></p>
 </section>
 """
 
@@ -718,9 +747,12 @@ def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
      anderen Seite der Erde.</p>
   {konditionen_html}
   <p class="knopfzeile">
-    <a class="knopf" href="{LINKEDIN}">Auf LinkedIn schreiben</a>
+    <a class="knopf" href="mailto:{KONTAKT}?subject=Anfrage%20Harness%20Engineering">E-Mail schreiben</a>
+    <a class="knopf knopf--leise" href="{LINKEDIN}">Auf LinkedIn schreiben</a>
     <a class="knopf knopf--leise" href="{LEBENSLAUF}">Lebenslauf ansehen</a>
   </p>
+  <p class="adresszeile">Oder direkt ins Postfach:
+     <a href="mailto:{KONTAKT}">{KONTAKT}</a></p>
 </section>
 """
 

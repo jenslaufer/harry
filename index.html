@@ -389,6 +389,20 @@ blockquote p {
 }
 .knopf--leise:hover { background: var(--tinte); color: var(--papier); }
 
+/* Die Adresse steht zusaetzlich als Text da, nicht nur als Ziel des Knopfes.
+   Ein mailto: geht ins Leere, wenn im Browser kein Mailprogramm haengt — und
+   genau dann will der Leser sie kopieren koennen. */
+.adresszeile {
+  margin-top: 0.9rem;
+  font-size: 0.9rem;
+  color: var(--gedaempft, inherit);
+}
+.adresszeile a {
+  font-family: var(--schrift-mono, monospace);
+  color: inherit;
+  text-decoration-color: var(--linie);
+}
+
 /* -------------------------------------------------------------------- Fuss */
 
 .fuss {
@@ -723,9 +737,12 @@ blockquote p.quelle {
      anderen Seite der Erde.</p>
   <div class="konditionen"><div class="kondition"><span>Verfügbar</span><b>ab 15.09.2026</b></div><div class="kondition"><span>Tagessatz</span><b>2.000 €/Tag (netto)</b></div><div class="kondition"><span>Remote</span><b>95 %</b></div><div class="kondition"><span>Einsatzort</span><b>weltweit</b></div></div>
   <p class="knopfzeile">
-    <a class="knopf" href="https://www.linkedin.com/in/jenslaufer">Auf LinkedIn schreiben</a>
+    <a class="knopf" href="mailto:jens.laufer@solytics.de?subject=Anfrage%20Harness%20Engineering">E-Mail schreiben</a>
+    <a class="knopf knopf--leise" href="https://www.linkedin.com/in/jenslaufer">Auf LinkedIn schreiben</a>
     <a class="knopf knopf--leise" href="https://cv.jenslaufer.com/">Lebenslauf ansehen</a>
   </p>
+  <p class="adresszeile">Oder direkt ins Postfach:
+     <a href="mailto:jens.laufer@solytics.de">jens.laufer@solytics.de</a></p>
 </section>
 
 

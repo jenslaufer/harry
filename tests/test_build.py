@@ -66,8 +66,12 @@ class TestDatenschutz(unittest.TestCase):
             build.pruefe_privat("Kontonummer DE57 3701 0050 0000 3995 09 steht hier")
 
     def test_mailadresse_bricht_ab(self):
+        # Bis zum 17.08. stand hier Jens' eigene Geschaeftsadresse als
+        # Beispiel — und das war der Fehler in Testform: der Waechter soll
+        # PRIVATES abfangen, nicht die eine Adresse, unter der Jens Auftraege
+        # annimmt. Sie ist jetzt erlaubt (`build.KONTAKT`), jede andere nicht.
         with self.assertRaises(build.PrivatException):
-            build.pruefe_privat("Schreib an jens.laufer@solytics.de wenn du magst")
+            build.pruefe_privat("Schreib an nadine.beispiel@example.org wenn du magst")
 
     def test_telefonnummer_bricht_ab(self):
         with self.assertRaises(build.PrivatException):
@@ -612,10 +616,6 @@ class TestZweisprachig(unittest.TestCase):
         self.assertIn("sofort", fremd)
 
 
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
-
-
 class TestSitemap(unittest.TestCase):
     """Google meldete am 17.08. `URL is unknown to Google` fuer diese Seite —
     sie stand in keiner sitemap der Domain. Geprueft wird die ausgelieferte
@@ -631,3 +631,50 @@ class TestSitemap(unittest.TestCase):
         self.assertEqual({build.BASIS, build.BASIS + "en/"}, adressen)
         for a in adressen:
             self.assertTrue(a.startswith("https://"), a)
+
+
+class TestKontaktadresse(unittest.TestCase):
+    """Die Seite soll Buchungen ausloesen und hatte keinen einzigen Weg dorthin.
+
+    Gemessen am 17.08. 12:2x an den ausgelieferten Dateien: `/harry/`,
+    `/harry/en/` und cv.jenslaufer.com enthalten zusammen **null**
+    E-Mail-Adressen. Der einzige angebotene Weg war eine LinkedIn-Nachricht —
+    die ein Fremder ohne Verbindung gar nicht schicken kann.
+
+    Die Ursache war der eigene Waechter: `MUSTER` sperrt JEDE Adresse, also
+    auch die eine, die hier hingehoert. Deshalb steht hier nicht nur, dass die
+    Adresse auf der Seite ist, sondern auch, dass die Ausnahme genau eine
+    Adresse durchlaesst und nicht eine Familie.
+    """
+
+    def test_eigene_adresse_ist_erlaubt(self):
+        build.pruefe_privat(f"Schreib an {build.KONTAKT}.")
+
+    def test_fremde_adresse_bleibt_gesperrt(self):
+        with self.assertRaises(build.PrivatException):
+            build.pruefe_privat("Schreib an fremd@example.com.")
+
+    def test_nachbaradresse_bleibt_gesperrt(self):
+        # Positivkontrolle fuer die Ausnahme. Eine Ausnahme, die auch die
+        # Nachbaradresse durchlaesst, ist keine Ausnahme, sondern ein Loch —
+        # und sie faellt niemandem auf, weil sie sich wie Erfolg anfuehlt.
+        for fast in ("jens.laufer@solytics.com",
+                     "jens.laufer@solytics.de.example.com",
+                     "anders@solytics.de",
+                     "xjens.laufer@solytics.de"):
+            with self.subTest(adresse=fast):
+                with self.assertRaises(build.PrivatException):
+                    build.pruefe_privat(f"Schreib an {fast}.")
+
+    def test_beide_sprachfassungen_nennen_die_adresse(self):
+        for sprache in build.SPRACHEN:
+            html = build.rendere(ZAHLEN_BEISPIEL, sprache)
+            with self.subTest(sprache=sprache):
+                self.assertIn(f"mailto:{build.KONTAKT}", html)
+                # Auch sichtbar, nicht nur als Ziel eines Knopfes: wer keinen
+                # Mailprogramm-Griff im Browser hat, klickt ins Leere.
+                self.assertIn(build.KONTAKT, re.sub(r"<[^>]+>", " ", html))
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)
