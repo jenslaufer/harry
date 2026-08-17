@@ -893,6 +893,19 @@ def main() -> int:
           f"en/index.html: {len(englisch.encode('utf-8'))} B, "
           f"Stand {_datum(zahlen['stand'])}")
 
+    # Sitemap. Am 17.08. bei Google selbst gemessen: die Search Console meldet
+    # fuer diese Seite `URL is unknown to Google`. Sie liegt in einem eigenen
+    # Repo und stand deshalb in keiner sitemap der Domain — ohne einen Weg
+    # dorthin holt Google sie nicht ab, wie gut die Zahlen darauf auch sind.
+    sm = ['<?xml version="1.0" encoding="UTF-8"?>',
+          '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for adresse in (BASIS, BASIS + "en/"):
+        sm.append(f"  <url><loc>{adresse}</loc>"
+                  f"<lastmod>{str(zahlen['stand'])[:10]}</lastmod></url>")
+    sm.append("</urlset>")
+    (WURZEL / "sitemap.xml").write_text("\n".join(sm) + "\n", encoding="utf-8")
+    print(f"sitemap.xml: {len(sm) - 3} Adressen")
+
     if argumente.og:
         for sprache in SPRACHEN:
             bild = baue_og_bild(zahlen, sprache=sprache)

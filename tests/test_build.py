@@ -614,3 +614,20 @@ class TestZweisprachig(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestSitemap(unittest.TestCase):
+    """Google meldete am 17.08. `URL is unknown to Google` fuer diese Seite —
+    sie stand in keiner sitemap der Domain. Geprueft wird die ausgelieferte
+    Datei, nicht die Faehigkeit, eine zu schreiben."""
+
+    def test_sitemap_nennt_beide_sprachfassungen(self):
+        import xml.etree.ElementTree as ET
+        pfad = build.WURZEL / "sitemap.xml"
+        self.assertTrue(pfad.exists(), "sitemap.xml fehlt — Google findet die Seite nicht")
+        wurzel = ET.fromstring(pfad.read_text(encoding="utf-8"))
+        ns = "{http://www.sitemaps.org/schemas/sitemap/0.9}"
+        adressen = {e.text for e in wurzel.iter(f"{ns}loc")}
+        self.assertEqual({build.BASIS, build.BASIS + "en/"}, adressen)
+        for a in adressen:
+            self.assertTrue(a.startswith("https://"), a)
