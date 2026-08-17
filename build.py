@@ -51,6 +51,41 @@ OG_VORLAGEN = {
 VORLAGE = VORLAGEN["de"]
 OG_VORLAGE = OG_VORLAGEN["de"]
 
+RECHT_VORLAGE = WURZEL / "template" / "recht.html"
+RECHTSARTEN = ("impressum", "datenschutz")
+# Wo die vier Rechtsseiten liegen. EINE Tabelle, aus der Bauen, Verlinken und
+# Pruefen lesen — zwei Stellen waeren zwei Wahrheiten, und ein Impressumslink
+# ins Leere ist schlimmer als keiner.
+RECHTSSEITEN = {
+    ("impressum", "de"): "impressum.html",
+    ("datenschutz", "de"): "datenschutz.html",
+    ("impressum", "en"): "en/imprint.html",
+    ("datenschutz", "en"): "en/privacy.html",
+}
+
+# Pflichtangaben nach § 5 DDG. Aus dem Handelsregister und den eigenen Belegen,
+# nicht geraten: HRB und Registergericht stehen im Impressum von solytics.de,
+# die USt-IdNr auf dem Finom-Rechnungsabschluss. Eine Telefonnummer steht
+# bewusst nicht da — § 5 DDG verlangt eine schnelle elektronische
+# Kontaktaufnahme, die E-Mail-Adresse genuegt (BGH I ZR 228/03).
+IMPRESSUM = {
+    "firma": "Solytics GmbH",
+    "strasse": "Hörsteiner Str. 20a",
+    "ort": "63791 Karlstein a. Main",
+    "land": "Deutschland",
+    "vertreten": "Jens Laufer",
+    "registergericht": "Amtsgericht Aschaffenburg",
+    "registernummer": "HRB 16879",
+    "ustid": "DE357501843",
+}
+
+# Hosts, von denen diese Seite laden DARF. Leer heisst: nichts. Die Liste ist
+# die Tuer im Waechter — ohne sie waere `pruefe_extern` derselbe Fehler wie die
+# Adress-Sperre, die bis zum 17.08. jeden Kontaktweg von der Seite genommen
+# hat. Was hier steht, muss in der Datenschutzerklaerung stehen; ein Test
+# haelt beide zusammen.
+EXTERN_ERLAUBT: tuple[str, ...] = ()
+
 REPOS = Path.home() / "repos"
 ASSISTANT = REPOS / "assistant"
 AGENT_TASKS = REPOS / "agent-tasks"
@@ -191,6 +226,62 @@ def pruefe_privat(text: str) -> None:
         treffer = re.search(muster, pruefbar)
         if treffer:
             raise PrivatException(f"{name} im Text: {treffer.group(0)}")
+
+
+class ExternException(Exception):
+    """Die Seite wuerde beim Leser etwas von fremden Servern laden."""
+
+
+# Attribute, die beim ANZEIGEN laden. Ein `<a href>` steht bewusst nicht dabei:
+# er laedt nichts, solange niemand klickt, und eine Seite, die nach draussen
+# zeigen darf, ist der Zweck der Uebung. `rel="canonical"` und `alternate`
+# laden ebenfalls nichts — sie sind Angaben fuer Suchmaschinen.
+_LADEND = re.compile(
+    r"<(?:script|img|iframe|video|audio|source|embed|track)\b[^>]*?\s"
+    r"src\s*=\s*[\"']([^\"']+)[\"']", re.I)
+_LINK = re.compile(r"<link\b([^>]*)>", re.I)
+_CSS_URL = re.compile(r"url\(\s*[\"']?([^\"')]+)[\"')]", re.I)
+_LINK_LAEDT_NICHT = ("canonical", "alternate", "me", "author", "license", "next", "prev")
+
+
+def externe_ressourcen(html: str, erlaubt: tuple[str, ...] = None) -> list[str]:
+    """Adressen, die der Browser beim Anzeigen von fremden Hosts holen wuerde."""
+    erlaubt = EXTERN_ERLAUBT if erlaubt is None else erlaubt
+    gefunden = [t for t in _LADEND.findall(html)]
+
+    for attribute in _LINK.findall(html):
+        rel = re.search(r"rel\s*=\s*[\"']?([\w -]+)", attribute, re.I)
+        if rel and rel.group(1).strip().lower() in _LINK_LAEDT_NICHT:
+            continue
+        ziel = re.search(r"href\s*=\s*[\"']([^\"']+)[\"']", attribute, re.I)
+        if ziel:
+            gefunden.append(ziel.group(1))
+
+    gefunden += _CSS_URL.findall(html)
+
+    fremd = []
+    for adresse in gefunden:
+        treffer = re.match(r"(?:https?:)?//([^/]+)", adresse.strip())
+        if treffer and treffer.group(1).lower() not in erlaubt:
+            fremd.append(adresse.strip())
+    return fremd
+
+
+def pruefe_extern(html: str, erlaubt: tuple[str, ...] = None) -> None:
+    """Wirft ExternException, wenn die Seite bei fremden Hosts laden wuerde.
+
+    Warum als Abbruch und nicht als Hinweis: ein `<link>` auf
+    fonts.googleapis.com traegt die IP jedes Lesers zu Google, bevor der Leser
+    etwas anklicken konnte, und das laesst sich mit keiner Datenschutzzeile
+    heilen (LG Muenchen I, 20.01.2022 — 3 O 17493/20). Ein Hinweis auf stderr
+    wird beim naechsten Build ueberlesen; ein Abbruch nicht.
+    """
+    fremd = externe_ressourcen(html, erlaubt)
+    if fremd:
+        raise ExternException(
+            "fremde Ressource auf der Seite: " + ", ".join(sorted(set(fremd)))
+            + " — erlaubt: " + (", ".join(erlaubt if erlaubt is not None
+                                          else EXTERN_ERLAUBT) or "nichts"))
 
 
 # ------------------------------------------------------------------- Messung
@@ -801,6 +892,121 @@ def rendere(zahlen: dict, sprache: str = "de") -> str:
     return seite
 
 
+# ------------------------------------------------------------- Rechtsseiten
+
+# Von Jens am 17.08. 12:32 bestellt: „Impressum und Datenschutzerklaerung muss
+# rein." Die Seite nennt einen Tagessatz, damit ist sie ein Angebot — beides
+# ist Pflicht (§ 5 DDG, Art. 13 DSGVO). Die Texte stehen in `template/`, weil
+# Prosa in Vorlagen gehoert; die Stammdaten stehen in EINER Tabelle oben,
+# damit die vier Fassungen nicht auseinanderlaufen koennen.
+RECHT_WORTE = {
+    "de": {
+        "impressum": ("Impressum", "Anbieterkennzeichnung",
+                      "Impressum — {firma}",
+                      "Pflichtangaben nach § 5 DDG."),
+        "datenschutz": ("Datenschutzerklärung", "Art. 13 DSGVO",
+                        "Datenschutzerklärung — {firma}",
+                        "Was beim Aufruf dieser Seite mit Daten geschieht."),
+        "sprache_label": "Sprache",
+        "andere": "English",
+        "diese": "Deutsch",
+        "zurueck": "Zurück zur Startseite",
+        "fuss": "Stand {stand}. Geschrieben und gebaut von Harry, im Auftrag von "
+                "{vertreten}. · <a href=\"{start}\">Zur Seite</a> · "
+                "<a href=\"{impressum}\">Impressum</a> · "
+                "<a href=\"{datenschutz}\">Datenschutzerklärung</a>",
+        "erlaubt_keine": "Es gibt derzeit keine Ausnahme von dieser Regel.",
+        "erlaubt_eine": "Eine Ausnahme ist eingetragen und hier benannt: {liste}.",
+    },
+    "en": {
+        "impressum": ("Legal notice", "Provider identification",
+                      "Legal notice — {firma}",
+                      "Mandatory details under § 5 DDG."),
+        "datenschutz": ("Privacy notice", "Art. 13 GDPR",
+                        "Privacy notice — {firma}",
+                        "What happens to data when you open this page."),
+        "sprache_label": "Language",
+        "andere": "Deutsch",
+        "diese": "English",
+        "zurueck": "Back to the start page",
+        "fuss": "Last updated {stand}. Written and built by Harry, for "
+                "{vertreten}. · <a href=\"{start}\">To the page</a> · "
+                "<a href=\"{impressum}\">Legal notice</a> · "
+                "<a href=\"{datenschutz}\">Privacy notice</a>",
+        "erlaubt_keine": "There is currently no exception to this rule.",
+        "erlaubt_eine": "One exception is registered and named here: {liste}.",
+    },
+}
+
+
+def _rechtspfad(art: str, sprache: str, von: str) -> str:
+    """Adresse der Rechtsseite `art`/`sprache`, relativ zur Seite `von`.
+
+    Die englischen Seiten liegen einen Ordner tiefer. Ein Impressumslink, der
+    im Unterordner ins Leere zeigt, ist schlimmer als keiner: er sieht aus wie
+    ein erfuellter Paragraf.
+    """
+    ziel = RECHTSSEITEN[(art, sprache)]
+    if von == "en":
+        return ziel[3:] if ziel.startswith("en/") else "../" + ziel
+    return ziel
+
+
+def rendere_recht(art: str, sprache: str = "de", stand: str = None) -> str:
+    if art not in RECHTSARTEN:
+        raise ValueError(art)
+    stand = stand or date.today().isoformat()
+    andere = "en" if sprache == "de" else "de"
+    worte = RECHT_WORTE[sprache]
+    ueberschrift, kicker, titel, beschreibung = worte[art]
+
+    inhalt = (WURZEL / "template" / f"{art}.{sprache}.html").read_text(encoding="utf-8")
+    if EXTERN_ERLAUBT:
+        quellen = worte["erlaubt_eine"].format(liste=", ".join(EXTERN_ERLAUBT))
+    else:
+        quellen = worte["erlaubt_keine"]
+
+    start = "index.html" if sprache == "de" else "index.html"
+    werte = {
+        "SPRACHE": sprache,
+        "SPRACHE_LABEL": worte["sprache_label"],
+        "TITEL": titel.format(firma=IMPRESSUM["firma"]),
+        "BESCHREIBUNG": beschreibung,
+        "KICKER": kicker,
+        "UEBERSCHRIFT": ueberschrift,
+        "BASIS": BASIS if sprache == "de" else BASIS + "en/",
+        "PFAD": Path(RECHTSSEITEN[(art, sprache)]).name,
+        "FONTS": "fonts/fonts.css" if sprache == "de" else "../fonts/fonts.css",
+        "CSS": CSS.read_text(encoding="utf-8"),
+        "SPRACHWECHSEL": (
+            f'<span aria-current="true">{worte["diese"]}</span>'
+            f'<a href="{_rechtspfad(art, andere, sprache)}" hreflang="{andere}" '
+            f'lang="{andere}">{RECHT_WORTE[andere]["diese"]}</a>'),
+        "INHALT": inhalt,
+        "ERLAUBTE_QUELLEN": quellen,
+        "FUSSTEXT": worte["fuss"].format(
+            stand=_datum(stand, sprache),
+            vertreten=IMPRESSUM["vertreten"],
+            start=start,
+            impressum=_rechtspfad("impressum", sprache, sprache),
+            datenschutz=_rechtspfad("datenschutz", sprache, sprache)),
+        "FIRMA": IMPRESSUM["firma"],
+        "STRASSE": IMPRESSUM["strasse"],
+        "ORT": IMPRESSUM["ort"],
+        "LAND": IMPRESSUM["land"],
+        "VERTRETEN": IMPRESSUM["vertreten"],
+        "REGISTERGERICHT": IMPRESSUM["registergericht"],
+        "REGISTERNUMMER": IMPRESSUM["registernummer"],
+        "USTID": IMPRESSUM["ustid"],
+        "KONTAKT": KONTAKT,
+    }
+
+    seite = RECHT_VORLAGE.read_text(encoding="utf-8")
+    for platzhalter, wert in werte.items():
+        seite = seite.replace("{{" + platzhalter + "}}", str(wert))
+    return re.sub(r"<!--.*?-->", "", seite, flags=re.S)
+
+
 def baue_og_bild(zahlen: dict, ziel: Path = None, sprache: str = "de") -> Path | None:
     """Rendert die Vorschaukarte fuer LinkedIn (1200x630) mit Chromium.
 
@@ -822,6 +1028,11 @@ def baue_og_bild(zahlen: dict, ziel: Path = None, sprache: str = "de") -> Path |
     arbeit.mkdir(parents=True, exist_ok=True)
     quelle = arbeit / "og-karte.html"
     quelle.write_text(karte, encoding="utf-8")
+    # Die Schriften liegen jetzt im Repo, also muessen sie mit in den
+    # Arbeitsordner — sonst rendert die Karte in der Systemschrift, und das
+    # faellt an einem Bild niemandem auf, bis es auf LinkedIn steht.
+    for datei in sorted((WURZEL / "fonts").glob("*")):
+        (arbeit / datei.name).write_bytes(datei.read_bytes())
 
     for programm in ("chromium", "chromium-browser", "google-chrome"):
         try:
@@ -854,11 +1065,30 @@ def schreibe(zahlen: dict, ziel: Path = None, zahlen_ziel: Path = None) -> str:
     # und eine ungeprueft geschriebene Fassung waere das Leck.
     pruefe_privat(englisch)
 
+    # Die Rechtsseiten laufen durch dieselben zwei Waechter. Ein zweiter
+    # Ausgang, der die Pruefung nicht selbst aufruft, halbiert sie — genau der
+    # Fall, den der Feed auf der Schwester-Seite heute frueh gezeigt hat.
+    stand = str(zahlen.get("stand") or date.today().isoformat())[:10]
+    recht = {}
+    for art in RECHTSARTEN:
+        for sprache in SPRACHEN:
+            html = rendere_recht(art, sprache, stand)
+            pruefe_privat(html)
+            pruefe_extern(html)
+            recht[(art, sprache)] = html
+    for html in (seite, englisch):
+        pruefe_extern(html)
+
     ziel_de = ziel or ZIEL
     ziel_de.write_text(seite, encoding="utf-8")
     ziel_en = ziel_de.parent / "en" / "index.html"
     ziel_en.parent.mkdir(parents=True, exist_ok=True)
     ziel_en.write_text(englisch, encoding="utf-8")
+
+    for (art, sprache), html in recht.items():
+        pfad = ziel_de.parent / RECHTSSEITEN[(art, sprache)]
+        pfad.parent.mkdir(parents=True, exist_ok=True)
+        pfad.write_text(html, encoding="utf-8")
 
     ziel_json = zahlen_ziel or ZAHLEN
     ziel_json.parent.mkdir(parents=True, exist_ok=True)

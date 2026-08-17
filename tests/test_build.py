@@ -676,5 +676,183 @@ class TestKontaktadresse(unittest.TestCase):
                 self.assertIn(build.KONTAKT, re.sub(r"<[^>]+>", " ", html))
 
 
+class TestFremdeRessourcen(unittest.TestCase):
+    """Was die Seite laedt, laedt sie beim Leser — vor jedem Klick.
+
+    Ein `<link>` auf fonts.googleapis.com traegt die IP jedes Besuchers zu
+    Google, bevor irgendjemand zugestimmt hat. Das ist der Fall, den keine
+    Datenschutzzeile heilt (LG Muenchen I, 20.01.2022 — 3 O 17493/20); heilbar
+    ist er nur durch Weglassen. Deshalb ist die Pruefung ein Waechter im Build
+    und kein Satz in einer Checkliste.
+
+    Der Waechter hat eine Tuer: `EXTERN_ERLAUBT`. Ohne sie waere er derselbe
+    Fehler wie die Adress-Sperre von heute frueh — ein Schutz, dessen einzige
+    Antwort `nein` ist, sperrt irgendwann die Sache, fuer die es die Seite
+    gibt. Und was durch die Tuer geht, muss in der Datenschutzerklaerung
+    stehen: das prueft der letzte Test hier, damit Liste und Erklaerung nicht
+    auseinanderlaufen koennen.
+    """
+
+    def test_erkennt_eine_fremde_schrift(self):
+        # Positivkontrolle. Ohne sie misst der Test unten nur, dass die
+        # Suchfunktion nichts findet — auch wenn sie gar nicht sucht.
+        fund = build.externe_ressourcen(
+            '<link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet">')
+        self.assertEqual(len(fund), 1, fund)
+        self.assertIn("fonts.googleapis.com", fund[0])
+
+    def test_erkennt_skript_bild_und_css_adresse(self):
+        for schnipsel in ('<script src="https://unpkg.com/leaflet.js"></script>',
+                          '<img src="https://example.com/a.png">',
+                          '<style>body{background:url(https://example.com/b.png)}</style>',
+                          '<link rel="preconnect" href="https://fonts.gstatic.com">',
+                          '<iframe src="https://www.youtube.com/embed/x"></iframe>'):
+            with self.subTest(schnipsel=schnipsel):
+                self.assertTrue(build.externe_ressourcen(schnipsel), schnipsel)
+
+    def test_anker_ist_keine_ressource(self):
+        # Ein Link laedt nichts, solange niemand klickt. Wer ihn mitzaehlt,
+        # macht den Waechter unbrauchbar — die Seite MUSS nach draussen zeigen.
+        self.assertEqual([], build.externe_ressourcen(
+            '<a href="https://www.linkedin.com/in/jenslaufer/">LinkedIn</a>'))
+
+    def test_eigene_und_data_adressen_sind_keine_fremden(self):
+        self.assertEqual([], build.externe_ressourcen(
+            '<link rel="stylesheet" href="fonts/fonts.css">'
+            '<link rel="icon" href="data:image/svg+xml,%3Csvg%3E">'
+            '<img src="/harry/og.png">'))
+
+    def test_canonical_und_alternate_laden_nichts(self):
+        self.assertEqual([], build.externe_ressourcen(
+            '<link rel="canonical" href="https://jenslaufer.com/harry/">'
+            '<link rel="alternate" hreflang="en" href="https://jenslaufer.com/harry/en/">'))
+
+    def test_alle_ausgelieferten_seiten_laden_nichts_fremdes(self):
+        for html, name in self._alle_seiten():
+            with self.subTest(seite=name):
+                self.assertEqual([], build.externe_ressourcen(html))
+
+    def test_pruefung_bricht_ab_statt_zu_melden(self):
+        with self.assertRaises(build.ExternException):
+            build.pruefe_extern('<script src="https://example.com/x.js"></script>')
+
+    def test_erlaubte_quelle_geht_durch_und_steht_in_der_datenschutzerklaerung(self):
+        for host in build.EXTERN_ERLAUBT:
+            with self.subTest(host=host):
+                build.pruefe_extern(f'<img src="https://{host}/a.png">')
+                for sprache in build.SPRACHEN:
+                    self.assertIn(host, build.rendere_recht("datenschutz", sprache),
+                                  f"{host} ist erlaubt, steht aber nicht in der "
+                                  f"Datenschutzerklaerung ({sprache})")
+
+    @staticmethod
+    def _alle_seiten():
+        for sprache in build.SPRACHEN:
+            yield build.rendere(ZAHLEN_BEISPIEL, sprache), f"index/{sprache}"
+            for art in build.RECHTSARTEN:
+                yield build.rendere_recht(art, sprache), f"{art}/{sprache}"
+
+
+class TestRechtsseiten(unittest.TestCase):
+    """Impressum und Datenschutzerklaerung, von Jens am 17.08. 12:32 bestellt.
+
+    Die Seite nennt einen Tagessatz — damit ist sie ein Angebot, und beide
+    sind Pflicht (§ 5 DDG, Art. 13 DSGVO). Geprueft wird der Inhalt, nicht die
+    Existenz der Datei: ein leeres Impressum liegt genauso auf der Platte.
+    """
+
+    def test_impressum_traegt_alle_pflichtangaben(self):
+        for sprache in build.SPRACHEN:
+            html = build.rendere_recht("impressum", sprache)
+            sichtbar = re.sub(r"<[^>]+>", " ", html)
+            with self.subTest(sprache=sprache):
+                for feld in ("firma", "strasse", "ort", "vertreten",
+                             "registergericht", "registernummer", "ustid"):
+                    self.assertIn(build.IMPRESSUM[feld], sichtbar, feld)
+                self.assertIn(build.KONTAKT, sichtbar)
+                self.assertIn(f"mailto:{build.KONTAKT}", html)
+
+    def test_impressum_nennt_das_geltende_gesetz(self):
+        # Das TMG ist seit dem 14.05.2024 durch das DDG ersetzt, der RStV seit
+        # 2020 durch den MStV. Beide stehen bis heute im Impressum von
+        # solytics.de — ein Impressum, das ein aufgehobenes Gesetz zitiert,
+        # ist der billigste Angriffspunkt, den eine Abmahnung hat.
+        html = build.rendere_recht("impressum", "de")
+        self.assertIn("DDG", html)
+        self.assertNotIn("TMG", html)
+        self.assertNotIn("RStV", html)
+
+    def test_datenschutz_traegt_die_pflichtinhalte(self):
+        for sprache in build.SPRACHEN:
+            html = build.rendere_recht("datenschutz", sprache)
+            with self.subTest(sprache=sprache):
+                for anker in ("Art. 13", "Art. 6", "Art. 15", "Art. 77",
+                              "GitHub", "Data Privacy Framework"):
+                    self.assertIn(anker, html, anker)
+                self.assertIn(build.IMPRESSUM["firma"], html)
+
+    def test_datenschutz_behauptet_keine_schriften_von_google(self):
+        # Der Satz "keine externen Ressourcen" ist nur so lange wahr, wie der
+        # Test darueber gruen ist — deshalb stehen beide im selben Repo.
+        for sprache in build.SPRACHEN:
+            html = build.rendere_recht("datenschutz", sprache)
+            self.assertEqual([], build.externe_ressourcen(html))
+
+    def test_jede_seite_verlinkt_impressum_und_datenschutz(self):
+        for html, name in TestFremdeRessourcen._alle_seiten():
+            with self.subTest(seite=name):
+                sprache = name.split("/")[-1]
+                for art in build.RECHTSARTEN:
+                    ziel = Path(build.RECHTSSEITEN[(art, sprache)]).name
+                    self.assertIn(ziel, html,
+                                  f"{name} verlinkt {art} nicht — "
+                                  "'staendig verfuegbar' heisst: von jeder Seite")
+
+    def test_rechtsseite_zeigt_auf_die_andere_sprache(self):
+        for art in build.RECHTSARTEN:
+            de = build.rendere_recht(art, "de")
+            en = build.rendere_recht(art, "en")
+            with self.subTest(art=art):
+                self.assertIn(Path(build.RECHTSSEITEN[(art, "en")]).name, de)
+                self.assertIn(Path(build.RECHTSSEITEN[(art, "de")]).name, en)
+
+    def test_englische_fassung_ist_englisch(self):
+        for art in build.RECHTSARTEN:
+            klein = TestZweisprachig.sichtbar(build.rendere_recht(art, "en"))
+            with self.subTest(art=art):
+                for wort in (r"\bund\b", r"\bnicht\b", r"\bwerden\b", r"\bkeine\b"):
+                    self.assertIsNone(re.search(wort, klein),
+                                      f"deutscher Rest in {art}/en: {wort}")
+
+    def test_deutsche_fassung_hat_echte_umlaute(self):
+        klein = TestEchteUmlaute.sichtbar(build.rendere_recht("datenschutz", "de"))
+        for wort in TestEchteUmlaute.UMSCHRIFT:
+            self.assertNotIn(wort, klein, f"ASCII-Umschrift: {wort!r}")
+
+    def test_schreibe_legt_alle_vier_seiten_an(self):
+        with tempfile.TemporaryDirectory() as ordner:
+            ziel = Path(ordner) / "index.html"
+            with sperrliste("geheim"):
+                build.schreibe(ZAHLEN_BEISPIEL, ziel=ziel,
+                               zahlen_ziel=Path(ordner) / "zahlen.json")
+            for pfad in build.RECHTSSEITEN.values():
+                datei = Path(ordner) / pfad
+                with self.subTest(pfad=pfad):
+                    self.assertTrue(datei.exists(), f"{pfad} fehlt")
+                    self.assertGreater(datei.stat().st_size, 1500, pfad)
+
+    def test_privatpruefung_gilt_auch_fuer_die_rechtsseiten(self):
+        # Eine Seite, die nicht durch die Pruefung laeuft, ist der Ausgang, an
+        # dem das Leck entsteht — dieselbe Bauform wie beim Feed heute frueh.
+        with tempfile.TemporaryDirectory() as ordner:
+            with sperrliste("karlstein"):
+                with self.assertRaises(build.PrivatException):
+                    build.schreibe(ZAHLEN_BEISPIEL,
+                                   ziel=Path(ordner) / "index.html",
+                                   zahlen_ziel=Path(ordner) / "zahlen.json")
+            self.assertEqual([], list(Path(ordner).iterdir()),
+                             "bei Abbruch darf nichts auf der Platte liegen")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
