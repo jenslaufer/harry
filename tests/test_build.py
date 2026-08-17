@@ -14,6 +14,7 @@ import re
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -544,6 +545,31 @@ class TestZweisprachig(unittest.TestCase):
         self.assertIn(f'hreflang="de" href="{basis}"', en)
         self.assertIn(f'rel="canonical" href="{basis}"', de)
         self.assertIn(f'rel="canonical" href="{basis}en/"', en)
+
+    def test_jede_fassung_verlinkt_den_lebenslauf_ihrer_sprache(self):
+        """Der Knopf auf der englischen Seite darf nicht deutsch landen.
+
+        Gemeldet von Jens am 17.08. 08:25: „Der Link des englischen harry geht
+        auf deutschen Cv." Eine Arbeitsprobe, die ihren eigenen Leser in die
+        falsche Sprache schickt, widerlegt genau das, wofuer sie da ist.
+        """
+        de = build.rendere(ZAHLEN_BEISPIEL)
+        en = build.rendere(ZAHLEN_BEISPIEL, "en")
+        self.assertIn(f'href="{build.LEBENSLAUF_EN}"', en)
+        self.assertNotIn(f'href="{build.LEBENSLAUF}"', en)
+        self.assertIn(f'href="{build.LEBENSLAUF}"', de)
+        self.assertNotIn(f'href="{build.LEBENSLAUF_EN}"', de)
+
+    def test_ohne_englischen_lebenslauf_nennt_der_knopf_die_sprache(self):
+        """Faellt der Knopf auf die deutsche Fassung zurueck, sagt er es.
+
+        Dieselbe Bauart wie REISE_SEITE_EN: lieber ein ehrlicher Hinweis als
+        ein stiller Sprachwechsel — und lieber gar kein Link als ein 404.
+        """
+        with unittest.mock.patch.object(build, "LEBENSLAUF_EN", None):
+            en = build.rendere(ZAHLEN_BEISPIEL, "en")
+        self.assertIn(f'href="{build.LEBENSLAUF}"', en)
+        self.assertIn("in German", en)
 
     def test_englische_vorschau_zeigt_auf_das_englische_bild(self):
         en = build.rendere(ZAHLEN_BEISPIEL, "en")

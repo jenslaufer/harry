@@ -88,6 +88,12 @@ KONDITIONEN = Path(
 )
 LINKEDIN = "https://www.linkedin.com/in/jenslaufer"
 LEBENSLAUF = "https://cv.jenslaufer.com/"
+# Dieselbe Regel wie bei REISE_SEITE_EN, und sie kam aus dem Fehler: bis zum
+# 17.08. gab es die englische Fassung nur als Daten (`cv/data/en/`), gebaut und
+# ausgeliefert wurde immer nur die deutsche. Der englische Knopf hier landete
+# damit still auf einer deutschen Seite — von Jens gemeldet, 08:25. Steht hier
+# None, nennt der Knopf die Sprache, statt den Leser zu ueberraschen.
+LEBENSLAUF_EN = "https://cv.jenslaufer.com/en/"
 
 
 # ---------------------------------------------------------------- Datenschutz
@@ -627,6 +633,8 @@ def _konditionen_en(konditionen: dict) -> list[tuple[str, str]]:
 
 
 def _buchen_abschnitt_en(konditionen: dict | None) -> str:
+    lebenslauf = LEBENSLAUF_EN or LEBENSLAUF
+    sprachnote = "" if LEBENSLAUF_EN else " (in German)"
     tabelle = "".join(
         f'<div class="kondition"><span>{name}</span><b>{wert}</b></div>'
         for name, wert in (_konditionen_en(konditionen) if konditionen else [])
@@ -655,7 +663,7 @@ def _buchen_abschnitt_en(konditionen: dict | None) -> str:
   {konditionen_html}
   <p class="knopfzeile">
     <a class="knopf" href="{LINKEDIN}">Message on LinkedIn</a>
-    <a class="knopf knopf--leise" href="{LEBENSLAUF}">See the CV</a>
+    <a class="knopf knopf--leise" href="{lebenslauf}">See the CV{sprachnote}</a>
   </p>
 </section>
 """
