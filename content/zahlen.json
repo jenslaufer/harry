@@ -2,10 +2,10 @@
   "auftraege": 726,
   "basis": "https://jenslaufer.com/harry/",
   "codezeilen": 18705,
-  "commits_assistant": 5014,
+  "commits_assistant": 5037,
   "cpu": "AMD Ryzen 5 3500U",
   "kerne": 8,
-  "koautor_commits": 1815,
+  "koautor_commits": 1810,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -13,17 +13,17 @@
     "tagessatz": "2.000 €/Tag (netto)",
     "verfuegbar": "ab 15.09.2026"
   },
-  "nachrichten": 2180,
+  "nachrichten": 2198,
   "pr_repos": 31,
   "prs": 956,
   "ram_gb": 12,
   "reise": {
-    "gemessen": 6,
-    "juengste_minuten": 7,
-    "median_minuten": 63,
-    "schnellste_minuten": 7
+    "gemessen": 9,
+    "juengste_minuten": 4,
+    "median_minuten": 41,
+    "schnellste_minuten": 4
   },
-  "sitzungen": 2334,
+  "sitzungen": 2337,
   "skills": 118,
   "stand": "2026-08-17",
   "start": "2026-03-20",
