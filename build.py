@@ -78,6 +78,13 @@ MUSTER = [
 SPERRLISTE = Path(
     os.environ.get("HARRY_SPERRLISTE", ASSISTANT / "state" / "oeffentlich-gesperrt.txt")
 )
+# Auf DIESER Seite sind auch die Namen aus der Warnliste eine harte Sperre: eine
+# Seite ueber den Harness hat keinen Grund, jemanden aus der Familie zu nennen.
+# Auf der Reise-Seite ist dieselbe Liste nur eine Meldung — dort geht es an
+# Freunde, und wer vorkommt, entscheidet Jens.
+WARNLISTE = Path(
+    os.environ.get("HARRY_WARNLISTE", ASSISTANT / "state" / "oeffentlich-warnung.txt")
+)
 
 GESPERRT: list[str] = []
 
@@ -497,6 +504,8 @@ def main() -> int:
     argumente = zerleger.parse_args()
 
     GESPERRT = lade_sperrliste()
+    if WARNLISTE.exists():
+        GESPERRT = GESPERRT + lade_sperrliste(WARNLISTE)
 
     alt = {}
     if ZAHLEN.exists():
