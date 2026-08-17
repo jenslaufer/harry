@@ -49,6 +49,14 @@ START = date(2026, 3, 20)
 # laufen. Eine Vorschau, die ins Leere zeigt, ist schlimmer als keine.
 BASIS = "https://jenslaufer.com/harry/"
 
+# Die Reise-Seite ist der laufende Beleg fuer diese hier: waehrend Jens drei
+# Wochen ohne Rechner unterwegs ist, entsteht sie ausschliesslich aus
+# Telegram-Nachrichten. Gemessen wird das drueben in
+# tools/reise-werkstatt.py; hier wird die Messung nur gelesen, damit es EINE
+# Quelle gibt und nicht zwei Seiten mit zwei Zahlen.
+REISE_MESSUNG = ASSISTANT / "state" / "reise-werkstatt.json"
+REISE_SEITE = "https://jenslaufer.com/malaysia/"
+
 
 # ---------------------------------------------------------------- Datenschutz
 
@@ -279,6 +287,28 @@ def _zaehle_testfunktionen() -> int | None:
     return summe if gefunden else None
 
 
+def _lies_reise() -> dict | None:
+    """Die Messung der Reise-Seite. Fehlt sie, gibt es den Abschnitt nicht.
+
+    Kein Pflichtfeld: die Reise endet am 07.09., der Abschnitt verschwindet dann
+    von selbst, statt eine tote Zahl weiterzutragen. Und 0 gemessene Meldungen
+    ist hier kein Fehler, sondern "noch nichts passiert" — deshalb None statt
+    einer Ausnahme.
+    """
+    try:
+        daten = json.loads(REISE_MESSUNG.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not daten.get("gemessen"):
+        return None
+    return {
+        "gemessen": daten["gemessen"],
+        "median_minuten": daten.get("median_minuten"),
+        "juengste_minuten": daten.get("juengste_minuten"),
+        "schnellste_minuten": daten.get("schnellste_minuten"),
+    }
+
+
 def messe() -> dict:
     """Alle Zahlen der Seite, aus den Repos dieser Maschine."""
     cpu, kerne, ram = _lies_hardware()
@@ -331,6 +361,7 @@ def messe() -> dict:
         "start": START.isoformat(),
         "stand": heute.isoformat(),
         "basis": BASIS,
+        "reise": _lies_reise(),
     }
 
 
@@ -392,6 +423,56 @@ def _zeitstreifen(aktive: list[int]) -> str:
     return "".join(teile)
 
 
+def _reise_abschnitt(reise: dict | None) -> str:
+    """Der laufende Beweis: eine Seite, die es ohne diesen Aufbau nicht gaebe.
+
+    Alles andere hier ist Innenansicht — Zahlen ueber das eigene Repo. Dieser
+    Abschnitt zeigt ein Ergebnis, das jeder anklicken und lesen kann, und die
+    einzige Zahl, die fuer einen Auftraggeber wirklich zaehlt: wie lange von der
+    Anforderung bis zum veroeffentlichten Artefakt.
+
+    Ohne Messung faellt der Abschnitt weg. Eine Seite, die eine laufende Reise
+    behauptet, die vorbei ist, ist schlechter als eine ohne den Abschnitt.
+    """
+    if not reise:
+        return ""
+    return f"""
+<section class="bahn">
+  <p class="kicker">Läuft gerade</p>
+  <h2>Der Reisebericht, den niemand tippt</h2>
+  <p>Seit dem 15. August ist Jens drei Wochen in Singapur und Malaysia — mit dem
+     Telefon, ohne Rechner, ohne Terminal. Trotzdem wächst in dieser Zeit eine
+     öffentliche Seite: <a href="{REISE_SEITE}">ein Reisebericht</a>, in dem jeder
+     Punkt sagt, ob wir es selbst erlebt oder nur nachgeschlagen haben.</p>
+  <p>Der Ablauf ist der ganze Trick. Jens schickt eine Telegram-Nachricht, wenn
+     unterwegs etwas funktioniert hat — zwei Sätze, oft nur ein Foto. Hier läuft
+     dann alles Weitere allein: den Satz gegen die bisherigen Notizen halten,
+     entscheiden, ob daraus ein <i>selbst erlebt</i> wird oder ein <i>offen, kommt
+     noch</i>, eintragen, auf private Daten prüfen, die Seite neu bauen,
+     veröffentlichen. Niemand sitzt dazwischen — in Deutschland ist es drei Uhr
+     nachts, wenn dort ein Bus fährt.</p>
+</section>
+
+<section class="band">
+  <div class="bahn">
+    <p class="kicker hell">Von der Nachricht bis online</p>
+    <div class="gitter">
+      <div class="kachel"><b>{zahl(reise['gemessen'])}</b><span>Meldungen bisher so verarbeitet</span></div>
+      <div class="kachel"><b>{zahl(reise['juengste_minuten'])}<small> min</small></b><span>zuletzt von der Nachricht bis online</span></div>
+      <div class="kachel"><b>{zahl(reise['median_minuten'])}<small> min</small></b><span>Median über alle</span></div>
+    </div>
+    <p class="einschraenkung">Auch diese Zahlen sind gemessen. Unter jedem selbst
+       erlebten Eintrag drüben steht seine eigene Zeit — der Zeitstempel der
+       Telegram-Nachricht und der des Commits, der ihn veröffentlicht hat, beide
+       aus der Git-Historie und einzeln nachrechenbar. Der Median enthält die
+       ersten vier Meldungen, die eintrafen, bevor es die Seite überhaupt gab;
+       ihr Wert enthält deren Bau mit. Die jüngste Zahl ist die aussagekräftige.</p>
+    <p class="knopfzeile"><a class="knopf" href="{REISE_SEITE}">Die Reise-Seite ansehen</a></p>
+  </div>
+</section>
+"""
+
+
 def rendere(zahlen: dict) -> str:
     pruefe_zahlen(zahlen)
     vorlage = VORLAGE.read_text(encoding="utf-8")
@@ -423,6 +504,7 @@ def rendere(zahlen: dict) -> str:
         "START": _datum(zahlen["start"]),
         "STAND": _datum(zahlen["stand"]),
         "NACHRICHTEN_PRO_TAG": f"{zahlen['nachrichten'] / max(zahlen['tage'], 1):.0f}",
+        "REISE": _reise_abschnitt(zahlen.get("reise")),
     }
 
     seite = vorlage

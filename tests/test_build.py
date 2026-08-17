@@ -248,5 +248,109 @@ class TestMessen(unittest.TestCase):
             build.pruefe_zahlen(kaputt)
 
 
+class TestReiseAbschnitt(unittest.TestCase):
+    """Der Abschnitt ueber die laufende Reise ist der einzige Beleg auf dieser
+    Seite, den ein Leser anklicken und selbst nachlesen kann. Alles andere ist
+    Innenansicht. Deshalb: keine Zahl ohne Messung, und kein Abschnitt ohne Zahl.
+    """
+
+    REISE = {"gemessen": 5, "median_minuten": 66, "juengste_minuten": 17,
+             "schnellste_minuten": 17}
+
+    def test_abschnitt_nennt_die_gemessenen_zahlen(self):
+        html = build._reise_abschnitt(self.REISE)
+        self.assertIn("5", html)
+        self.assertIn("66", html)
+        self.assertIn("17", html)
+
+    def test_abschnitt_verlinkt_die_reise_seite(self):
+        self.assertIn("/malaysia/", build._reise_abschnitt(self.REISE))
+
+    def test_ohne_messung_faellt_der_abschnitt_weg(self):
+        # Nach dem 07.09. gibt es keine Reise mehr. Eine Seite, die eine
+        # laufende Reise behauptet, die vorbei ist, ist schlechter als eine ohne
+        # den Abschnitt — deshalb faellt er weg statt einzufrieren.
+        self.assertEqual(build._reise_abschnitt(None), "")
+        self.assertEqual(build._reise_abschnitt({}), "")
+
+    def test_reise_ist_kein_pflichtfeld(self):
+        # Faellt die Messung aus, muss die uebrige Seite trotzdem bauen.
+        self.assertNotIn("reise", build.PFLICHTFELDER)
+
+    def test_platzhalter_wird_ersetzt_wenn_keine_reise_laeuft(self):
+        # Der haessliche Fall: {{REISE}} bleibt als Text auf der Seite stehen.
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen["reise"] = None
+        self.assertNotIn("{{REISE}}", build.rendere(zahlen))
+
+    def test_abschnitt_steht_auf_der_seite_wenn_eine_reise_laeuft(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen["reise"] = self.REISE
+        seite = build.rendere(zahlen)
+        self.assertIn("/malaysia/", seite)
+
+    def test_messung_ohne_gemessene_meldung_gibt_None(self):
+        # 0 gemessene Meldungen heisst "noch nichts passiert", nicht "0 Minuten".
+        import tempfile, json as _json
+        with tempfile.TemporaryDirectory() as d:
+            datei = Path(d) / "m.json"
+            datei.write_text(_json.dumps({"gemessen": 0, "median_minuten": None}))
+            alt = build.REISE_MESSUNG
+            build.REISE_MESSUNG = datei
+            try:
+                self.assertIsNone(build._lies_reise())
+            finally:
+                build.REISE_MESSUNG = alt
+
+    def test_fehlende_messdatei_ist_kein_absturz(self):
+        alt = build.REISE_MESSUNG
+        build.REISE_MESSUNG = Path("/gibt/es/nicht.json")
+        try:
+            self.assertIsNone(build._lies_reise())
+        finally:
+            build.REISE_MESSUNG = alt
+
+
+
+class TestEchteUmlaute(unittest.TestCase):
+    """Der ausgelieferte Text traegt echte Umlaute, nie die ASCII-Umschrift.
+
+    Der Fehler entsteht im Python-Quelltext, wo die Umschrift Gewohnheit ist,
+    und wandert von dort auf eine deutsche Seite, die als Arbeitsprobe dient.
+    Am 17.08. genau so im Werkstatt-Band der Schwester-Seite passiert und erst
+    beim Rendern aufgefallen. Geprueft wird der SICHTBARE Text — ein Kommentar
+    im Stylesheet liest niemand, und ein Test, der am falschen Ort misst, wird
+    abgeschaltet statt befolgt.
+    """
+
+    UMSCHRIFT = [
+        "prueft", "traegt", "laeuft", "veroeffentlich", "geschaetzt",
+        "waehrend", "fuer ", "ueber ", "koennen", "muessen", "naechste",
+        "gepruef", "haelt", "faehrt", "gehoert",
+    ]
+
+    @staticmethod
+    def sichtbar(seite: str) -> str:
+        ohne = re.sub(r"<(style|script)\b.*?</\1>", " ", seite, flags=re.S | re.I)
+        ohne = re.sub(r"<!--.*?-->", " ", ohne, flags=re.S)
+        return re.sub(r"<[^>]+>", " ", ohne).lower()
+
+    def test_reise_abschnitt_hat_keine_ascii_umschrift(self):
+        klein = self.sichtbar(build._reise_abschnitt(
+            {"gemessen": 5, "median_minuten": 66, "juengste_minuten": 17,
+             "schnellste_minuten": 17}
+        ))
+        for wort in self.UMSCHRIFT:
+            self.assertNotIn(wort, klein, f"ASCII-Umschrift im Abschnitt: {wort!r}")
+
+    def test_ausgelieferte_seite_hat_keine_ascii_umschrift(self):
+        if not build.ZIEL.exists():
+            self.skipTest("index.html noch nicht gebaut")
+        klein = self.sichtbar(build.ZIEL.read_text(encoding="utf-8"))
+        for wort in self.UMSCHRIFT:
+            self.assertNotIn(wort, klein, f"ASCII-Umschrift auf der Seite: {wort!r}")
+
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

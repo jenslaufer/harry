@@ -211,11 +211,25 @@ h2 {
   line-height: 1;
   letter-spacing: -0.02em;
 }
+.kachel b small {
+  font-size: 0.42em;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--maschine-dim);
+}
 .kachel span {
   font-size: 0.78rem;
   line-height: 1.35;
   color: var(--maschine-dim);
 }
+
+/* Auf dem dunklen Band muss der Knopf umgedreht werden — sonst steht dunkel auf
+   dunkel und der einzige Weg zur Reise-Seite ist unsichtbar. */
+.band .knopf {
+  background: var(--maschine-text);
+  color: var(--maschine);
+}
+.band .knopf:hover { background: var(--leuchte); color: var(--maschine); }
 
 .einschraenkung {
   margin-top: 2rem;

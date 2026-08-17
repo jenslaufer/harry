@@ -33,6 +33,24 @@ Measuring takes ~30 s (it walks every repo under `~/repos`). PR counts need
 network and are therefore kept out of the main path: a measurement that depends on
 the network must never be able to fail the whole build.
 
+## The live proof: the travel page
+
+Everything else on this page is an inside view — numbers about its own repos.
+One section is not: while Jens travels for three weeks with only a phone, a
+public travel report grows at [jenslaufer.com/malaysia](https://jenslaufer.com/malaysia/),
+built from nothing but Telegram messages.
+
+That section renders from `~/repos/assistant/state/reise-werkstatt.json` — the
+same measurement the travel page itself reads, so the two can't drift into two
+different numbers. `_lies_reise()` returns `None` when the file is missing or no
+message has been measured, and the whole section disappears. That is deliberate:
+the trip ends 2026-09-07, and a page claiming a running trip that is over is
+worse than a page without the section. It expires by itself.
+
+The measured quantity is the one an FDE buyer actually cares about: **from the
+request to the published artifact.** Not "an agent exists" — how long, measured,
+per entry, in git.
+
 ## The blocklist lives outside this repo — on purpose
 
 `pruefe_privat()` aborts the build if a passport number, IBAN, e-mail address or
