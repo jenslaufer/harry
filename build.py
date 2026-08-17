@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Baut harry.jenslaufer.com — die Seite ueber den Harness, den Jens gebaut hat.
+"""Baut otto.jenslaufer.com — die Seite ueber den Harness, den Jens gebaut hat.
 
 Die tragende Entscheidung: **die Zahlen auf der Seite werden gemessen, nicht
 getippt.** `messe()` liest sie aus der git-Historie der Repos auf dieser
@@ -97,7 +97,7 @@ START = date(2026, 3, 20)
 # Wo die Seite ausgeliefert wird. Heute der Projektpfad, nach dem DNS-Eintrag
 # die Subdomain — eine Zeile, damit og:image und canonical nicht auseinander
 # laufen. Eine Vorschau, die ins Leere zeigt, ist schlimmer als keine.
-BASIS = "https://jenslaufer.com/harry/"
+BASIS = "https://jenslaufer.com/otto/"
 
 # Die Reise-Seite ist der laufende Beleg fuer diese hier: waehrend Jens drei
 # Wochen ohne Rechner unterwegs ist, entsteht sie ausschliesslich aus
@@ -119,14 +119,14 @@ REISE_SEITE_EN = "https://jenslaufer.com/malaysia/en/"
 # bewegen sich Lebenslauf und diese Seite gemeinsam, wenn er sie aendert.
 # Fehlt die Datei, steht hier gar kein Satz statt eines erfundenen.
 KONDITIONEN = Path(
-    os.environ.get("HARRY_KONDITIONEN", REPOS / "cv" / "data" / "konditionen.csv")
+    os.environ.get("OTTO_KONDITIONEN", REPOS / "cv" / "data" / "konditionen.csv")
 )
 LINKEDIN = "https://www.linkedin.com/in/jenslaufer"
 # Die eine Adresse, die auf diese Seite GEHOERT — und die der eigene Waechter
 # bis zum 17.08. verhindert hat. `MUSTER` unten sperrt jede E-Mail-Adresse,
 # also auch diese; Folge: die Seite, die Buchungen ausloesen soll, bot als
 # einzigen Weg eine LinkedIn-Nachricht an, die ein Fremder ohne Verbindung gar
-# nicht schicken kann. Gemessen: `/harry/`, `/harry/en/` und
+# nicht schicken kann. Gemessen: `/otto/`, `/otto/en/` und
 # cv.jenslaufer.com enthielten zusammen null Adressen.
 # Sie steht seit Langem oeffentlich im Impressum auf solytics.de — sie hier zu
 # nennen legt nichts offen, was nicht schon offen ist.
@@ -166,14 +166,14 @@ MUSTER = [
 # soll. Sie liegt im privaten Assistenz-Repo. Fehlt sie, bricht der Build ab;
 # ein Schutz, der bei fehlender Datei stillschweigend durchlaesst, ist keiner.
 SPERRLISTE = Path(
-    os.environ.get("HARRY_SPERRLISTE", ASSISTANT / "state" / "oeffentlich-gesperrt.txt")
+    os.environ.get("OTTO_SPERRLISTE", ASSISTANT / "state" / "oeffentlich-gesperrt.txt")
 )
 # Auf DIESER Seite sind auch die Namen aus der Warnliste eine harte Sperre: eine
 # Seite ueber den Harness hat keinen Grund, jemanden aus der Familie zu nennen.
 # Auf der Reise-Seite ist dieselbe Liste nur eine Meldung — dort geht es an
 # Freunde, und wer vorkommt, entscheidet Jens.
 WARNLISTE = Path(
-    os.environ.get("HARRY_WARNLISTE", ASSISTANT / "state" / "oeffentlich-warnung.txt")
+    os.environ.get("OTTO_WARNLISTE", ASSISTANT / "state" / "oeffentlich-warnung.txt")
 )
 
 GESPERRT: list[str] = []
@@ -911,7 +911,7 @@ RECHT_WORTE = {
         "andere": "English",
         "diese": "Deutsch",
         "zurueck": "Zurück zur Startseite",
-        "fuss": "Stand {stand}. Geschrieben und gebaut von Harry, im Auftrag von "
+        "fuss": "Stand {stand}. Geschrieben und gebaut von Otto, im Auftrag von "
                 "{vertreten}. · <a href=\"{start}\">Zur Seite</a> · "
                 "<a href=\"{impressum}\">Impressum</a> · "
                 "<a href=\"{datenschutz}\">Datenschutzerklärung</a>",
@@ -929,7 +929,7 @@ RECHT_WORTE = {
         "andere": "Deutsch",
         "diese": "English",
         "zurueck": "Back to the start page",
-        "fuss": "Last updated {stand}. Written and built by Harry, for "
+        "fuss": "Last updated {stand}. Written and built by Otto, for "
                 "{vertreten}. · <a href=\"{start}\">To the page</a> · "
                 "<a href=\"{impressum}\">Legal notice</a> · "
                 "<a href=\"{datenschutz}\">Privacy notice</a>",
@@ -1024,7 +1024,7 @@ def baue_og_bild(zahlen: dict, ziel: Path = None, sprache: str = "de") -> Path |
     pruefe_privat(karte)
 
     # Snap-Chromium darf weder nach /tmp noch in versteckte Ordner schreiben.
-    arbeit = Path.home() / "pdf-slim-work" / "harry" / sprache
+    arbeit = Path.home() / "pdf-slim-work" / "otto" / sprache
     arbeit.mkdir(parents=True, exist_ok=True)
     quelle = arbeit / "og-karte.html"
     quelle.write_text(karte, encoding="utf-8")

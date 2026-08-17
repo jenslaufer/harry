@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests fuer den Build von harry.jenslaufer.com.
+"""Tests fuer den Build von otto.jenslaufer.com.
 
 Aufruf: python3 tests/test_build.py
 
@@ -720,12 +720,12 @@ class TestFremdeRessourcen(unittest.TestCase):
         self.assertEqual([], build.externe_ressourcen(
             '<link rel="stylesheet" href="fonts/fonts.css">'
             '<link rel="icon" href="data:image/svg+xml,%3Csvg%3E">'
-            '<img src="/harry/og.png">'))
+            '<img src="/otto/og.png">'))
 
     def test_canonical_und_alternate_laden_nichts(self):
         self.assertEqual([], build.externe_ressourcen(
-            '<link rel="canonical" href="https://jenslaufer.com/harry/">'
-            '<link rel="alternate" hreflang="en" href="https://jenslaufer.com/harry/en/">'))
+            '<link rel="canonical" href="https://jenslaufer.com/otto/">'
+            '<link rel="alternate" hreflang="en" href="https://jenslaufer.com/otto/en/">'))
 
     def test_alle_ausgelieferten_seiten_laden_nichts_fremdes(self):
         for html, name in self._alle_seiten():

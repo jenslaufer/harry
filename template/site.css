@@ -1,4 +1,4 @@
-/* harry.jenslaufer.com
+/* otto.jenslaufer.com
    Papier und Maschine: der Fliesstext liegt auf warmem Papier, alles Gemessene
    auf dunklen Baendern in Monospace. Der Wechsel ist die einzige Gliederung,
    die die Seite braucht — es gibt keine Kacheln, keine Symbole, keine Farben
@@ -87,8 +87,8 @@ code {
 h1 {
   font-family: Fraunces, Georgia, serif;
   font-optical-sizing: auto;
-  /* 300 wirkt bei dieser Groesse haarduenn: der Querbalken des H verschwindet
-     und "Harry" liest sich als "Iarry". 500 traegt. */
+  /* 300 wirkt bei dieser Groesse haarduenn: duenne Serifen verschwimmen bei
+     dieser Groesse zu leicht. 500 traegt. */
   font-weight: 500;
   font-size: clamp(4.5rem, 20vw, 10rem);
   line-height: 0.86;

@@ -1,10 +1,12 @@
-# harry.jenslaufer.com
+# otto.jenslaufer.com
 
-A page about Harry — Jens Laufer's personal assistant. Claude is the brain; the
+A page about Otto — Jens Laufer's personal assistant. Claude is the brain; the
 harness around it (wake-up schedule, memory, channel, watchdogs) is Jens's work.
 Static page, no framework, no dependencies beyond three webfonts.
 
-Commissioned by Jens over Telegram, 2026-08-17 06:16: *"Mach subdomain. Füge
+Commissioned by Jens over Telegram, 2026-08-17 06:16 (the assistant was named
+Harry at the time; renamed to Otto on 2026-08-17 15:1x after Jens flagged that a
+colleague had given his own coding agent the same name): *"Mach subdomain. Füge
 hinzu, dass Du Harry (mein persönlicher Assistent. Claude ist das Gehirn und Jens
 hat den Harness erstellt). Du kannst ein paar Statistiken zum Harness geben
 (Storytelling mit dem mini-pc im Keller, Telegram als Kommunikation). […] Gib
@@ -72,7 +74,7 @@ config is gone is not a guard.
 
 GitHub Pages from `main`, repo root. `.nojekyll` disables Jekyll processing.
 
-The page is served at `https://jenslaufer.com/harry/` until the DNS record for
+The page is served at `https://jenslaufer.com/otto/` until the DNS record for
 the subdomain exists. `BASIS` in `build.py` is the single place that decides which
 address goes into `canonical` and `og:image` — switch it in one line, rebuild, and
 add a `CNAME` file.
@@ -83,8 +85,8 @@ and has dropped `EmailType` before, which kills mail. During a trip that runs on
 booking confirmations, that risk buys nothing — the page is visible immediately
 under the project path. DNS goes last, on Jens's word.
 
-Then: CNAME record `harry` → `jenslaufer.github.io` (same as `cv` and `concepts`),
-a `CNAME` file containing `harry.jenslaufer.com`, and `BASIS` updated.
+Then: CNAME record `otto` → `jenslaufer.github.io` (same as `cv` and `concepts`),
+a `CNAME` file containing `otto.jenslaufer.com`, and `BASIS` updated.
 
 ## Maintenance
 
