@@ -71,10 +71,11 @@ BASIS = "https://jenslaufer.com/harry/"
 # Quelle gibt und nicht zwei Seiten mit zwei Zahlen.
 REISE_MESSUNG = ASSISTANT / "state" / "reise-werkstatt.json"
 REISE_SEITE = "https://jenslaufer.com/malaysia/"
-# Solange es die Reise-Seite nur auf Deutsch gibt, sagt die englische Fassung
-# das dazu, statt auf eine Adresse zu zeigen, die es nicht gibt. Erst wenn
-# `/malaysia/en/` wirklich ausgeliefert wird, steht hier die englische Adresse.
-REISE_SEITE_EN = None
+# Erst eingetragen, als `/malaysia/en/` wirklich ausgeliefert wurde (17.08.,
+# HTTP 200 gegen echtes DNS geprueft). Steht hier None, sagt die englische
+# Fassung „written in German" dazu — ein Link auf eine geplante Seite ist eine
+# Behauptung, ein 404 auf der Arbeitsprobe ist der teuerste Tippfehler.
+REISE_SEITE_EN = "https://jenslaufer.com/malaysia/en/"
 
 # Der Tagessatz wird gelesen, nicht getippt — aus derselben Datei, aus der auch
 # cv.jenslaufer.com baut. Jens hat drei eigene Flaechen mit drei verschiedenen
