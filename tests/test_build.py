@@ -311,6 +311,132 @@ class TestReiseAbschnitt(unittest.TestCase):
             build.REISE_MESSUNG = alt
 
 
+class TestKonditionen(unittest.TestCase):
+    """Der Tagessatz auf dieser Seite wird gelesen, nicht getippt.
+
+    Jens hat drei eigene Flaechen mit drei verschiedenen Saetzen (Lebenslauf
+    2.000, freelancermap 800, Markt 640 — am 15.08. von ihm selbst gemessen).
+    Eine vierte getippte Zahl waere die vierte Wahrheit. Deshalb liest der Build
+    dieselbe Datei, aus der auch der Lebenslauf baut: aendert Jens sie, bewegen
+    sich beide Seiten. Fehlt sie, steht hier KEIN Satz — eine erfundene Zahl auf
+    einer Angebotsseite ist der teuerste Fehler, den diese Seite machen kann.
+    """
+
+    CSV = "field,value\nTagessatz,2.000 €/Tag (netto)\nAnteil Remote,95 %\n" \
+          "Verfügbarkeit,ab 15.09.2026\nEinsatzort,weltweit\n"
+
+    @contextlib.contextmanager
+    def datei(self, inhalt):
+        with tempfile.TemporaryDirectory() as d:
+            pfad = Path(d) / "konditionen.csv"
+            pfad.write_text(inhalt, encoding="utf-8")
+            alt = build.KONDITIONEN
+            build.KONDITIONEN = pfad
+            try:
+                yield pfad
+            finally:
+                build.KONDITIONEN = alt
+
+    def test_liest_die_felder_aus_der_lebenslauf_datei(self):
+        with self.datei(self.CSV):
+            k = build._lies_konditionen()
+        self.assertEqual(k["tagessatz"], "2.000 €/Tag (netto)")
+        self.assertEqual(k["verfuegbar"], "ab 15.09.2026")
+        self.assertEqual(k["remote"], "95 %")
+        self.assertEqual(k["einsatzort"], "weltweit")
+
+    def test_fehlende_datei_gibt_None_statt_erfundener_werte(self):
+        alt = build.KONDITIONEN
+        build.KONDITIONEN = Path("/gibt/es/nicht.csv")
+        try:
+            self.assertIsNone(build._lies_konditionen())
+        finally:
+            build.KONDITIONEN = alt
+
+    def test_datei_ohne_tagessatz_gibt_None(self):
+        # Halb gelesen ist hier schlimmer als gar nicht: der Abschnitt wuerde
+        # sonst eine Verfuegbarkeit ohne Preis behaupten.
+        with self.datei("field,value\nEinsatzort,weltweit\n"):
+            self.assertIsNone(build._lies_konditionen())
+
+    def test_abschnitt_ohne_konditionen_nennt_keinen_preis(self):
+        html = build._buchen_abschnitt(None)
+        self.assertNotIn("€", html)
+        self.assertNotIn("Tagessatz", html)
+        # Der Abschnitt selbst bleibt: wer ihn liest, soll trotzdem wissen,
+        # was Jens macht und wie man ihn erreicht.
+        self.assertIn("linkedin.com/in/jenslaufer", html)
+
+    def test_abschnitt_mit_konditionen_nennt_satz_und_verfuegbarkeit(self):
+        with self.datei(self.CSV):
+            html = build._buchen_abschnitt(build._lies_konditionen())
+        self.assertIn("2.000", html)
+        self.assertIn("15.09.2026", html)
+
+    def test_abschnitt_nennt_beide_rollen(self):
+        html = build._buchen_abschnitt(None)
+        self.assertIn("Forward Deployed Engineer", html)
+        self.assertIn("Harness Engineer", html)
+
+    def test_abschnitt_verlinkt_lebenslauf_und_linkedin(self):
+        html = build._buchen_abschnitt(None)
+        self.assertIn("cv.jenslaufer.com", html)
+        self.assertIn("linkedin.com/in/jenslaufer", html)
+
+    def test_konditionen_sind_kein_pflichtfeld(self):
+        self.assertNotIn("konditionen", build.PFLICHTFELDER)
+
+    def test_platzhalter_wird_auch_ohne_konditionen_ersetzt(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen["konditionen"] = None
+        self.assertNotIn("{{BUCHEN}}", build.rendere(zahlen))
+
+
+class TestPositionierung(unittest.TestCase):
+    """Die Seite soll Auftraege bringen. Dann muss sie sagen, wofuer.
+
+    Auftrag Jens 17.08. 07:35: „Sorge dafuer, dass die Leute Schlange stehen um
+    mich als Harness Engineer bzw FDE zu buchen." Eine Seite, auf der die Rolle
+    nicht steht, kann das nicht — auch wenn alles andere daran stimmt.
+    """
+
+    def seite(self):
+        zahlen = dict(ZAHLEN_BEISPIEL)
+        zahlen["reise"] = {"gemessen": 5, "median_minuten": 66,
+                           "juengste_minuten": 17, "schnellste_minuten": 17}
+        zahlen["konditionen"] = {"tagessatz": "2.000 €/Tag (netto)",
+                                 "verfuegbar": "ab 15.09.2026",
+                                 "remote": "95 %", "einsatzort": "weltweit"}
+        return build.rendere(zahlen)
+
+    def test_rollen_stehen_auf_der_seite(self):
+        seite = self.seite()
+        self.assertIn("Forward Deployed Engineer", seite)
+        self.assertIn("Harness Engineer", seite)
+
+    def test_name_steht_in_titel_oder_beschreibung(self):
+        kopf = self.seite().split("</head>")[0]
+        self.assertIn("Jens Laufer", kopf)
+
+    def test_vorschau_und_titel_nennen_die_rolle(self):
+        # Was geteilt wird, ist der Vorschautext — nicht der Fliesstext.
+        kopf = self.seite().split("</head>")[0]
+        self.assertTrue(
+            "Harness" in kopf or "Forward Deployed" in kopf,
+            "weder Titel noch og:description nennen die Rolle",
+        )
+
+    def test_die_vier_interessen_stehen_da(self):
+        # Sie sind der Grund, warum der Aufbau so aussieht, nicht Dekoration.
+        seite = self.seite()
+        for wort in ("Komplex", "Skalier", "Zufall", "Ungewissheit"):
+            self.assertIn(wort, seite, f"fehlt auf der Seite: {wort}")
+
+    def test_verfuegbarkeit_steht_nicht_zweimal_verschieden(self):
+        # Zwei Daten auf einer Seite sind schlimmer als keins.
+        treffer = set(re.findall(r"ab \d\d\.\d\d\.20\d\d", self.seite()))
+        self.assertLessEqual(len(treffer), 1, f"widersprechende Angaben: {treffer}")
+
 
 class TestEchteUmlaute(unittest.TestCase):
     """Der ausgelieferte Text traegt echte Umlaute, nie die ASCII-Umschrift.

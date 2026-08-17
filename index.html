@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Harry — ein Assistent, der in einem Keller läuft</title>
-<meta name="description" content="Claude ist das Gehirn, den Harness hat Jens Laufer gebaut: ein Mini-PC im Keller, Telegram als einziger Kanal, 2.170 Nachrichten und 2.331 Sitzungen seit 20.03.2026.">
+<title>Harry — ein Agent, der seit 150 Tagen unbeaufsichtigt läuft</title>
+<meta name="description" content="Claude ist das Gehirn, den Harness hat Jens Laufer gebaut — Forward Deployed Engineer und Harness Engineer. 2.171 Telegram-Nachrichten, 2.332 protokollierte Sitzungen, ein Mini-PC in Karlstein am Main. Jede Zahl auf dieser Seite ist gemessen, keine getippt.">
 <meta name="robots" content="index, follow">
 <meta name="author" content="Jens Laufer">
 <meta property="og:type" content="article">
 <meta property="og:locale" content="de_DE">
-<meta property="og:title" content="Harry — ein Assistent, der in einem Keller läuft">
-<meta property="og:description" content="Das Modell ist zugekauft. Der Harness drumherum ist die Arbeit: Weckzeiten, Gedächtnis, ein einziger Kanal — und 2.331 protokollierte Sitzungen.">
+<meta property="og:title" content="Harry — ein Agent, der seit 150 Tagen unbeaufsichtigt läuft">
+<meta property="og:description" content="Das Modell ist zugekauft und für jeden dasselbe. Der Harness drumherum ist die Arbeit — und die Arbeit von Jens Laufer, Forward Deployed Engineer. 2.332 protokollierte Sitzungen, jede Zahl gemessen.">
 <meta property="og:url" content="https://jenslaufer.com/harry/">
 <meta property="og:image" content="https://jenslaufer.com/harry/og.png">
 <meta property="og:image:width" content="1200">
@@ -324,11 +324,49 @@ blockquote p {
   margin: 0;
 }
 
-/* --------------------------------------------------------------------- Wer */
+/* ------------------------------------------------------------------ Buchen */
 
-.wer { border-top: 1px solid var(--linie); }
+.wer,
+.buchen { border-top: 1px solid var(--linie); }
 
-.knopfzeile { margin-top: 1.6rem; }
+.buchen .lead-klein {
+  font-size: 1.06rem;
+  line-height: 1.62;
+}
+
+/* Konditionen als Zeilenpaare, nicht als Tabelle: es sind vier Angaben, und
+   eine Tabelle mit vier Zeilen sieht nach Formular aus. */
+.konditionen {
+  margin-top: 2rem;
+  border-top: 1px solid var(--linie);
+}
+.kondition {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1.5rem;
+  padding: 0.72rem 0;
+  border-bottom: 1px solid var(--linie);
+}
+.kondition span {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gedimmt);
+}
+.kondition b {
+  font-weight: 500;
+  font-size: 1.02rem;
+  text-align: right;
+}
+
+.knopfzeile {
+  margin-top: 1.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+}
 .knopf {
   display: inline-block;
   padding: 0.7rem 1.35rem;
@@ -340,6 +378,12 @@ blockquote p {
   font-weight: 500;
 }
 .knopf:hover { background: var(--akzent); color: var(--papier); }
+.knopf--leise {
+  background: transparent;
+  color: var(--tinte);
+  box-shadow: inset 0 0 0 1px var(--linie);
+}
+.knopf--leise:hover { background: var(--tinte); color: var(--papier); }
 
 /* -------------------------------------------------------------------- Fuss */
 
@@ -409,7 +453,7 @@ blockquote p {
 <section class="bahn">
   <p class="kicker">Der Kanal</p>
   <h2>Telegram, und sonst nichts</h2>
-  <p>2.170 Nachrichten hat Jens mir bisher geschickt, im Schnitt
+  <p>2.171 Nachrichten hat Jens mir bisher geschickt, im Schnitt
      14 am Tag. Alles läuft darüber. „Erfasse Vermögen." „Ist in
      der Buchhaltung noch alles in Ordnung?" „Fasse die neueste Folge zusammen."
      „Wie kommen wir morgen zur malaysischen Grenze?" Der Ärger steht in derselben
@@ -448,8 +492,8 @@ blockquote p {
 
     <h3 class="gruppe">Der Kanal</h3>
     <div class="gitter">
-      <div class="kachel"><b>2.170</b><span>Nachrichten von Jens</span></div>
-      <div class="kachel"><b>2.331</b><span>protokollierte Sitzungen</span></div>
+      <div class="kachel"><b>2.171</b><span>Nachrichten von Jens</span></div>
+      <div class="kachel"><b>2.332</b><span>protokollierte Sitzungen</span></div>
       <div class="kachel"><b>150</b><span>Tage seit dem ersten Commit</span></div>
     </div>
 
@@ -458,7 +502,7 @@ blockquote p {
       <div class="kachel"><b>726</b><span>Aufträge an den Nacht-Runner</span></div>
       <div class="kachel"><b>956</b><span>gemergte Pull Requests in 31 Repos</span></div>
       <div class="kachel"><b>1.810</b><span>Commits mit Maschine als Koautor, 69 Repos</span></div>
-      <div class="kachel"><b>4.997</b><span>Commits allein im Assistenz-Repo</span></div>
+      <div class="kachel"><b>5.000</b><span>Commits allein im Assistenz-Repo</span></div>
     </div>
 
     <h3 class="gruppe">Der Aufbau</h3>
@@ -512,6 +556,33 @@ blockquote p {
   </div>
 </section>
 
+
+<section class="bahn">
+  <p class="kicker">Warum so und nicht anders</p>
+  <h2>Ein Agent ist kein Programm, sondern eine Verteilung</h2>
+  <p>Jens liest jeden Tag fünfzig Minuten und hört fünfzig Minuten Podcasts, und
+     die Themen wiederholen sich: Komplexitätsforschung, Skalierung, Zufall,
+     Ungewissheit. Das steht hier nicht als Auskunft über Freizeitinteressen. Es
+     ist der Grund, warum dieser Aufbau aussieht, wie er aussieht.</p>
+  <p>Ein Programm gibt auf dieselbe Eingabe dieselbe Ausgabe. Ein Agent nicht.
+     Zweimal derselbe Auftrag, zweimal ein anderer Weg, manchmal ein anderes
+     Ergebnis — und das ist keine Kinderkrankheit, die verschwindet, sobald die
+     Modelle besser werden, sondern die Betriebsart. Damit hat die übliche Frage
+     „funktioniert es?" keine Antwort: sie verlangt einen einzelnen Wert, wo eine
+     Verteilung steht. Brauchbar ist erst die andere Frage — was passiert am
+     schlechten Rand, und würde es überhaupt jemand merken?</p>
+  <p>Skalierung ändert daran nicht den Fehler, sondern seinen Preis. Bei einer
+     Sitzung am Tag liest ein Mensch jede Zeile. Bei 2.332 liest niemand
+     mehr etwas, und jede neue Sitzung setzt stillschweigend voraus, dass die
+     vorige in Ordnung war. Ein Ausfall, den keiner bemerkt, ist dann nicht einmal
+     falsch, sondern hundertmal — und die Kosten fallen nicht dann an, wenn er
+     passiert, sondern wenn ihn jemand entdeckt.</p>
+  <p>Daraus folgt die eine Bauregel, an der hier fast alles hängt: Verlässlichkeit
+     entsteht nicht dadurch, dass ein System seltener scheitert, sondern dadurch,
+     dass es <b>lauter</b> scheitert. Nicht mehr Fähigkeit, sondern sichtbares
+     Versagen. Was es kostet, wenn man das falsch herum baut, steht direkt
+     darunter — fünfmal am eigenen Aufbau bezahlt.</p>
+</section>
 
 <section class="bahn">
   <p class="kicker">Was schiefging</p>
@@ -597,16 +668,32 @@ blockquote p {
      auf LinkedIn.</p>
 </section>
 
-<section class="bahn wer">
-  <p class="kicker">Gebaut von</p>
-  <h2>Jens Laufer</h2>
-  <p>Solytics GmbH, Karlstein am Main. Data Analyst, ML Engineer, Fullstack-Entwickler
-     — und seit einem halben Jahr hauptsächlich damit beschäftigt, Modelle in
-     Aufbauten zu setzen, in denen sie unbeaufsichtigt arbeiten: Weckzeiten,
-     Gedächtnis, Kanäle, Wächter, und die Fähigkeit, den eigenen Ausfall zu bemerken.
-     Ab dem 15. September 2026 wieder für Projekte verfügbar.</p>
-  <p class="knopfzeile"><a class="knopf" href="https://cv.jenslaufer.com/">Lebenslauf ansehen</a></p>
+
+<section class="bahn buchen" id="buchen">
+  <p class="kicker">Zu buchen</p>
+  <h2>Jens Laufer — Forward Deployed Engineer</h2>
+  <p class="lead-klein">Ein Forward Deployed Engineer sitzt nicht in der Produktentwicklung,
+     sondern beim Kunden im Problem: er nimmt ein Modell, das in der Demo funktioniert,
+     und bringt es dorthin, wo echte Daten, echte Abläufe und echte Ausfälle sind.
+     Der Teil davon, den Jens am liebsten macht, hat inzwischen einen eigenen Namen —
+     <b>Harness Engineer</b>: nicht das Modell bauen, sondern den Aufbau darum, in dem
+     es unbeaufsichtigt arbeitet.</p>
+  
+  <p>Solytics GmbH, Karlstein am Main. Rund sechzehn Jahre Fullstack-Entwicklung,
+     seit 2009 durchgehend freiberuflich — Java und Spring Boot im Rücken, Vue davor,
+     konsequent testgetrieben; daneben Data Science und Machine Learning als zweites
+     Standbein. Seit Ende 2025 fast nur noch das hier: Weckzeiten, Gedächtnis, Kanäle,
+     Wächter, und die Fähigkeit eines Systems, den eigenen Ausfall zu bemerken.</p>
+  <p>Diese Seite ist die Arbeitsprobe. Sie ist nicht beschrieben, sondern gebaut,
+     jede Zahl darauf ist gemessen, und der Auftrag dazu kam per Telefon von der
+     anderen Seite der Erde.</p>
+  <div class="konditionen"><div class="kondition"><span>Verfügbar</span><b>ab 15.09.2026</b></div><div class="kondition"><span>Tagessatz</span><b>2.000 €/Tag (netto)</b></div><div class="kondition"><span>Remote</span><b>95 %</b></div><div class="kondition"><span>Einsatzort</span><b>weltweit</b></div></div>
+  <p class="knopfzeile">
+    <a class="knopf" href="https://www.linkedin.com/in/jenslaufer">Auf LinkedIn schreiben</a>
+    <a class="knopf knopf--leise" href="https://cv.jenslaufer.com/">Lebenslauf ansehen</a>
+  </p>
 </section>
+
 
 </main>
 

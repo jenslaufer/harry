@@ -57,6 +57,18 @@ BASIS = "https://jenslaufer.com/harry/"
 REISE_MESSUNG = ASSISTANT / "state" / "reise-werkstatt.json"
 REISE_SEITE = "https://jenslaufer.com/malaysia/"
 
+# Der Tagessatz wird gelesen, nicht getippt — aus derselben Datei, aus der auch
+# cv.jenslaufer.com baut. Jens hat drei eigene Flaechen mit drei verschiedenen
+# Saetzen (Lebenslauf 2.000, freelancermap 800, Markt 640; von ihm selbst am
+# 15.08. gemessen). Eine vierte getippte Zahl waere die vierte Wahrheit. So
+# bewegen sich Lebenslauf und diese Seite gemeinsam, wenn er sie aendert.
+# Fehlt die Datei, steht hier gar kein Satz statt eines erfundenen.
+KONDITIONEN = Path(
+    os.environ.get("HARRY_KONDITIONEN", REPOS / "cv" / "data" / "konditionen.csv")
+)
+LINKEDIN = "https://www.linkedin.com/in/jenslaufer"
+LEBENSLAUF = "https://cv.jenslaufer.com/"
+
 
 # ---------------------------------------------------------------- Datenschutz
 
@@ -362,6 +374,7 @@ def messe() -> dict:
         "stand": heute.isoformat(),
         "basis": BASIS,
         "reise": _lies_reise(),
+        "konditionen": _lies_konditionen(),
     }
 
 
@@ -473,6 +486,87 @@ def _reise_abschnitt(reise: dict | None) -> str:
 """
 
 
+def _lies_konditionen() -> dict | None:
+    """Tagessatz und Verfuegbarkeit aus der Lebenslauf-Datei, oder None.
+
+    Halb gelesen waere schlimmer als gar nicht: ein Abschnitt, der eine
+    Verfuegbarkeit ohne Preis nennt, sieht aus wie eine Entscheidung. Ohne
+    Tagessatz gibt es deshalb nichts.
+    """
+    try:
+        roh = KONDITIONEN.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    felder = {}
+    for zeile in roh.splitlines()[1:]:
+        if "," not in zeile:
+            continue
+        name, _, wert = zeile.partition(",")
+        felder[name.strip()] = wert.strip()
+    if not felder.get("Tagessatz"):
+        return None
+    return {
+        "tagessatz": felder["Tagessatz"],
+        "verfuegbar": felder.get("Verfügbarkeit", ""),
+        "remote": felder.get("Anteil Remote", ""),
+        "einsatzort": felder.get("Einsatzort", ""),
+    }
+
+
+def _buchen_abschnitt(konditionen: dict | None) -> str:
+    """Wofuer man Jens bucht, ab wann, und was es kostet.
+
+    Der Abschnitt bleibt auch ohne Konditionen stehen — wer bis hierher gelesen
+    hat, soll erfahren, was Jens macht und wie er erreichbar ist. Es faellt nur
+    die Zeile mit dem Satz weg, denn die einzige Zahl auf dieser Seite, die
+    nicht gemessen werden kann, darf auch nicht geraten werden.
+    """
+    zeilen = []
+    if konditionen:
+        if konditionen.get("verfuegbar"):
+            zeilen.append(("Verfügbar", konditionen["verfuegbar"]))
+        zeilen.append(("Tagessatz", konditionen["tagessatz"]))
+        if konditionen.get("remote"):
+            zeilen.append(("Remote", konditionen["remote"]))
+        if konditionen.get("einsatzort"):
+            zeilen.append(("Einsatzort", konditionen["einsatzort"]))
+    tabelle = "".join(
+        f'<div class="kondition"><span>{name}</span><b>{wert}</b></div>'
+        for name, wert in zeilen
+    )
+    konditionen_html = f'<div class="konditionen">{tabelle}</div>' if tabelle else ""
+
+    return f"""
+<section class="bahn buchen" id="buchen">
+  <p class="kicker">Zu buchen</p>
+  <h2>Jens Laufer — Forward Deployed Engineer</h2>
+  <p class="lead-klein">Ein Forward Deployed Engineer sitzt nicht in der Produktentwicklung,
+     sondern beim Kunden im Problem: er nimmt ein Modell, das in der Demo funktioniert,
+     und bringt es dorthin, wo echte Daten, echte Abläufe und echte Ausfälle sind.
+     Der Teil davon, den Jens am liebsten macht, hat inzwischen einen eigenen Namen —
+     <b>Harness Engineer</b>: nicht das Modell bauen, sondern den Aufbau darum, in dem
+     es unbeaufsichtigt arbeitet.</p>
+  <!-- Angaben aus cv/data: highlights.csv ("~16 Jahre Fullstack seit 2009,
+       durchgehend als Freelancer"), projects.csv (Harness Engineering seit
+       12/2025). Nichts hier geschaetzt — eine erfundene Jahreszahl im
+       Lebenslauf-Absatz faellt beim ersten Gespraech auf. -->
+  <p>Solytics GmbH, Karlstein am Main. Rund sechzehn Jahre Fullstack-Entwicklung,
+     seit 2009 durchgehend freiberuflich — Java und Spring Boot im Rücken, Vue davor,
+     konsequent testgetrieben; daneben Data Science und Machine Learning als zweites
+     Standbein. Seit Ende 2025 fast nur noch das hier: Weckzeiten, Gedächtnis, Kanäle,
+     Wächter, und die Fähigkeit eines Systems, den eigenen Ausfall zu bemerken.</p>
+  <p>Diese Seite ist die Arbeitsprobe. Sie ist nicht beschrieben, sondern gebaut,
+     jede Zahl darauf ist gemessen, und der Auftrag dazu kam per Telefon von der
+     anderen Seite der Erde.</p>
+  {konditionen_html}
+  <p class="knopfzeile">
+    <a class="knopf" href="{LINKEDIN}">Auf LinkedIn schreiben</a>
+    <a class="knopf knopf--leise" href="{LEBENSLAUF}">Lebenslauf ansehen</a>
+  </p>
+</section>
+"""
+
+
 def rendere(zahlen: dict) -> str:
     pruefe_zahlen(zahlen)
     vorlage = VORLAGE.read_text(encoding="utf-8")
@@ -505,6 +599,7 @@ def rendere(zahlen: dict) -> str:
         "STAND": _datum(zahlen["stand"]),
         "NACHRICHTEN_PRO_TAG": f"{zahlen['nachrichten'] / max(zahlen['tage'], 1):.0f}",
         "REISE": _reise_abschnitt(zahlen.get("reise")),
+        "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen")),
     }
 
     seite = vorlage
