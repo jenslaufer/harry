@@ -5,7 +5,7 @@
   "commits_assistant": 5037,
   "cpu": "AMD Ryzen 5 3500U",
   "kerne": 8,
-  "koautor_commits": 1810,
+  "koautor_commits": 1807,
   "koautor_repos": 69,
   "konditionen": {
     "einsatzort": "weltweit",
@@ -18,9 +18,9 @@
   "prs": 956,
   "ram_gb": 12,
   "reise": {
-    "gemessen": 9,
-    "juengste_minuten": 4,
-    "median_minuten": 41,
+    "gemessen": 11,
+    "juengste_minuten": 11,
+    "median_minuten": 21,
     "schnellste_minuten": 4
   },
   "sitzungen": 2337,
