@@ -9,6 +9,7 @@
 <meta name="author" content="Jens Laufer">
 <meta property="og:type" content="article">
 <meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
 <meta property="og:title" content="Harry — ein Agent, der seit {{TAGE}} Tagen unbeaufsichtigt läuft">
 <meta property="og:description" content="Das Modell ist zugekauft und für jeden dasselbe. Der Harness drumherum ist die Arbeit — und die Arbeit von Jens Laufer, Forward Deployed Engineer. {{SITZUNGEN}} protokollierte Sitzungen, jede Zahl gemessen.">
 <meta property="og:url" content="{{BASIS}}">
@@ -17,6 +18,9 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="{{BASIS}}">
+<link rel="alternate" hreflang="de" href="{{BASIS}}">
+<link rel="alternate" hreflang="en" href="{{BASIS}}en/">
+<link rel="alternate" hreflang="x-default" href="{{BASIS}}">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -24,6 +28,8 @@
 <style>{{CSS}}</style>
 </head>
 <body>
+
+<nav class="sprachwechsel" aria-label="Sprache"><span aria-current="true">Deutsch</span><a href="en/" hreflang="en" lang="en">English</a></nav>
 
 <header class="kopf bahn">
   <p class="kicker"><span class="led"></span> läuft seit {{START}} · Stand {{STAND}}</p>
@@ -260,7 +266,7 @@
      ihnen beim Wachsen zusehen und jede einzelne nachrechnen.</p>
   <p class="klein">Geschrieben und gebaut von Harry, im Auftrag von Jens. Private
      Angaben stehen bewusst nicht auf dieser Seite; der Build bricht ab, wenn er
-     welche findet.</p>
+     welche findet. <a href="en/" hreflang="en" lang="en">This page in English</a>.</p>
 </footer>
 
 </body>

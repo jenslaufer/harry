@@ -478,5 +478,113 @@ class TestEchteUmlaute(unittest.TestCase):
 
 
 
+class TestZweisprachig(unittest.TestCase):
+    """Deutsch UND Englisch aus EINER Messung.
+
+    Die Regel dahinter: zwei Sprachfassungen sind zwei Leser derselben Zahlen,
+    nie zwei Rechnungen. Sobald die englische Seite eine eigene Messung haette,
+    stuenden nach einer Woche zwei verschiedene Wahrheiten im Netz.
+    """
+
+    # Woerter, die es auf der englischen Seite nicht geben darf. Der Test misst
+    # die ABWESENHEIT des alten Zustands, nicht die Anwesenheit des neuen: ein
+    # vergessener Abschnitt faellt sonst nicht auf, weil die Seite trotzdem
+    # rendert und englisch aussieht.
+    DEUTSCH = [
+        r"\bund\b", r"\bnicht\b", r"\bwird\b", r"\bsind\b", r"\bjede\b",
+        r"\bkeine\b", r"\bich\b", r"sitzungen", r"nachrichten", r"tagessatz",
+        r"weckzeiten", r"auftr", r"werkzeuge",
+    ]
+
+    @staticmethod
+    def sichtbar(seite: str) -> str:
+        ohne = re.sub(r"<(style|script)\b.*?</\1>", " ", seite, flags=re.S | re.I)
+        ohne = re.sub(r"<!--.*?-->", " ", ohne, flags=re.S)
+        return re.sub(r"<[^>]+>", " ", ohne).lower()
+
+    def test_zahlformat_folgt_der_sprache(self):
+        self.assertEqual(build.zahl(2167), "2.167")
+        self.assertEqual(build.zahl(2167, "en"), "2,167")
+
+    def test_datum_folgt_der_sprache(self):
+        self.assertEqual(build._datum("2026-08-17"), "17.08.2026")
+        self.assertEqual(build._datum("2026-08-17", "en"), "17 August 2026")
+
+    def test_englische_seite_rendert_vollstaendig(self):
+        seite = build.rendere(ZAHLEN_BEISPIEL, "en")
+        self.assertIn('lang="en"', seite)
+        self.assertNotIn("{{", seite)
+
+    def test_deutsche_seite_bleibt_deutsch(self):
+        seite = build.rendere(ZAHLEN_BEISPIEL)
+        self.assertIn('lang="de"', seite)
+        self.assertNotIn("{{", seite)
+
+    def test_englische_seite_hat_keine_deutschen_reste(self):
+        klein = self.sichtbar(build.rendere(ZAHLEN_BEISPIEL, "en"))
+        for muster in self.DEUTSCH:
+            self.assertIsNone(
+                re.search(muster, klein),
+                f"deutscher Rest auf der englischen Seite: {muster}",
+            )
+
+    def test_beide_seiten_tragen_dieselben_zahlen(self):
+        de = build.rendere(ZAHLEN_BEISPIEL)
+        en = build.rendere(ZAHLEN_BEISPIEL, "en")
+        # Dieselbe Messung, nur anders geschrieben: 2.167 hier, 2,167 dort.
+        self.assertIn(build.zahl(ZAHLEN_BEISPIEL["sitzungen"]), de)
+        self.assertIn(build.zahl(ZAHLEN_BEISPIEL["sitzungen"], "en"), en)
+        self.assertNotIn(build.zahl(ZAHLEN_BEISPIEL["sitzungen"]), en)
+
+    def test_jede_seite_zeigt_auf_die_andere(self):
+        basis = ZAHLEN_BEISPIEL.get("basis") or build.BASIS
+        de = build.rendere(ZAHLEN_BEISPIEL)
+        en = build.rendere(ZAHLEN_BEISPIEL, "en")
+        self.assertIn(f'hreflang="en" href="{basis}en/"', de)
+        self.assertIn(f'hreflang="de" href="{basis}"', en)
+        self.assertIn(f'rel="canonical" href="{basis}"', de)
+        self.assertIn(f'rel="canonical" href="{basis}en/"', en)
+
+    def test_englische_vorschau_zeigt_auf_das_englische_bild(self):
+        en = build.rendere(ZAHLEN_BEISPIEL, "en")
+        basis = ZAHLEN_BEISPIEL.get("basis") or build.BASIS
+        self.assertIn(f'og:image" content="{basis}en/og.png"', en)
+
+    def test_schreibe_legt_beide_fassungen_an(self):
+        with tempfile.TemporaryDirectory() as ordner:
+            ziel = Path(ordner) / "index.html"
+            with sperrliste("nichts-davon"):
+                build.schreibe(ZAHLEN_BEISPIEL, ziel=ziel,
+                               zahlen_ziel=Path(ordner) / "zahlen.json")
+            self.assertTrue(ziel.exists())
+            englisch = Path(ordner) / "en" / "index.html"
+            self.assertTrue(englisch.exists(), "en/index.html fehlt")
+            self.assertIn('lang="en"', englisch.read_text(encoding="utf-8"))
+
+    def test_privatpruefung_gilt_auch_englisch(self):
+        # Die Sperrliste greift auf BEIDEN Seiten. Eine Fassung, die nicht
+        # geprueft wird, ist das Leck.
+        with tempfile.TemporaryDirectory() as ordner:
+            with sperrliste("karlstein"):
+                with self.assertRaises(build.PrivatException):
+                    build.schreibe(ZAHLEN_BEISPIEL,
+                                   ziel=Path(ordner) / "index.html",
+                                   zahlen_ziel=Path(ordner) / "zahlen.json")
+
+    def test_englische_konditionen_erfinden_nichts(self):
+        roh = {"tagessatz": "2.000 €/Tag (netto)", "verfuegbar": "ab 15.09.2026",
+               "remote": "95 %", "einsatzort": "weltweit"}
+        block = build._buchen_abschnitt(roh, "en")
+        self.assertIn("2,000", block)
+        self.assertIn("15 September 2026", block)
+        self.assertIn("worldwide", block)
+        # Unbekannte Schreibweise: lieber der Originalwert als eine Erfindung.
+        fremd = build._buchen_abschnitt(
+            {"tagessatz": "nach Absprache", "verfuegbar": "sofort",
+             "remote": "", "einsatzort": ""}, "en")
+        self.assertIn("nach Absprache", fremd)
+        self.assertIn("sofort", fremd)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

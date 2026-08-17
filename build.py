@@ -30,11 +30,26 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 
 WURZEL = Path(__file__).resolve().parent
-VORLAGE = WURZEL / "template" / "page.html"
-OG_VORLAGE = WURZEL / "template" / "og.html"
 CSS = WURZEL / "template" / "site.css"
 ZAHLEN = WURZEL / "content" / "zahlen.json"
 ZIEL = WURZEL / "index.html"
+
+# Zwei Sprachfassungen, EINE Messung. Der englische Text ist eine zweite
+# Ansicht derselben Zahlen, nie eine zweite Rechnung — sonst stehen nach einer
+# Woche zwei verschiedene Wahrheiten im Netz, und keiner der beiden Leser
+# erfaehrt davon. Die englische Fassung liegt unter `en/`, weil ein
+# Unterordner ohne DNS, ohne Zertifikat und ohne zweiten Build auskommt.
+SPRACHEN = ("de", "en")
+VORLAGEN = {
+    "de": WURZEL / "template" / "page.html",
+    "en": WURZEL / "template" / "page.en.html",
+}
+OG_VORLAGEN = {
+    "de": WURZEL / "template" / "og.html",
+    "en": WURZEL / "template" / "og.en.html",
+}
+VORLAGE = VORLAGEN["de"]
+OG_VORLAGE = OG_VORLAGEN["de"]
 
 REPOS = Path.home() / "repos"
 ASSISTANT = REPOS / "assistant"
@@ -56,6 +71,10 @@ BASIS = "https://jenslaufer.com/harry/"
 # Quelle gibt und nicht zwei Seiten mit zwei Zahlen.
 REISE_MESSUNG = ASSISTANT / "state" / "reise-werkstatt.json"
 REISE_SEITE = "https://jenslaufer.com/malaysia/"
+# Solange es die Reise-Seite nur auf Deutsch gibt, sagt die englische Fassung
+# das dazu, statt auf eine Adresse zu zeigen, die es nicht gibt. Erst wenn
+# `/malaysia/en/` wirklich ausgeliefert wird, steht hier die englische Adresse.
+REISE_SEITE_EN = None
 
 # Der Tagessatz wird gelesen, nicht getippt — aus derselben Datei, aus der auch
 # cv.jenslaufer.com baut. Jens hat drei eigene Flaechen mit drei verschiedenen
@@ -413,13 +432,28 @@ def hole_pr_zahlen() -> tuple[int | None, int | None]:
 
 # ------------------------------------------------------------------- Rendern
 
-def zahl(wert: int) -> str:
-    """Deutsche Schreibweise: 2.167, nicht 2,167 und nicht 2167."""
-    return f"{wert:,}".replace(",", ".")
+def zahl(wert: int, sprache: str = "de") -> str:
+    """2.167 auf Deutsch, 2,167 auf Englisch — dieselbe Zahl, zwei Schreibweisen.
+
+    Die Trennzeichen sind zwischen den Sprachen vertauscht: eine deutsche
+    2.167 liest ein englischer Leser als zwei Komma eins sechs sieben. Eine
+    unveraendert uebernommene Zahl waere also nicht bloss fremd, sondern um den
+    Faktor Tausend falsch.
+    """
+    getrennt = f"{wert:,}"
+    return getrennt if sprache == "en" else getrennt.replace(",", ".")
 
 
-def _datum(iso: str) -> str:
+MONATE_EN = ["January", "February", "March", "April", "May", "June", "July",
+             "August", "September", "October", "November", "December"]
+
+
+def _datum(iso: str, sprache: str = "de") -> str:
     jahr, monat, tag = iso.split("-")
+    if sprache == "en":
+        # 17.08.2026 heisst in den USA der 8. Datum ohne Monatsnamen ist auf
+        # einer englischen Seite mehrdeutig, und zwar still.
+        return f"{int(tag)} {MONATE_EN[int(monat) - 1]} {jahr}"
     return f"{tag}.{monat}.{jahr}"
 
 
@@ -436,7 +470,49 @@ def _zeitstreifen(aktive: list[int]) -> str:
     return "".join(teile)
 
 
-def _reise_abschnitt(reise: dict | None) -> str:
+def _reise_abschnitt_en(reise: dict) -> str:
+    """Dieselbe Messung auf Englisch. Ein Hinweis mehr: die Seite ist deutsch."""
+    ziel = REISE_SEITE_EN or REISE_SEITE
+    sprachnote = "" if REISE_SEITE_EN else " (written in German)"
+    return f"""
+<section class="bahn">
+  <p class="kicker">Running right now</p>
+  <h2>The travel diary nobody types</h2>
+  <p>Since 15 August Jens has been in Singapore and Malaysia for three weeks —
+     with a phone, no computer, no terminal. A public page grows during that time
+     anyway: <a href="{ziel}">a travel diary</a>{sprachnote} in which every entry
+     says whether we lived through it ourselves or only looked it up.</p>
+  <p>The procedure is the whole trick. Jens sends a Telegram message whenever
+     something out there worked — two sentences, often just a photo. Everything
+     after that runs here on its own: hold the message against the existing
+     notes, decide whether it becomes a <i>lived through it</i> or an <i>open,
+     still to come</i>, write it in, check it for private data, rebuild the page,
+     publish. Nobody sits in between — it is three in the morning in Germany when
+     a bus leaves over there.</p>
+</section>
+
+<section class="band">
+  <div class="bahn">
+    <p class="kicker hell">From message to published</p>
+    <div class="gitter">
+      <div class="kachel"><b>{zahl(reise['gemessen'], 'en')}</b><span>messages processed this way so far</span></div>
+      <div class="kachel"><b>{zahl(reise['juengste_minuten'], 'en')}<small> min</small></b><span>most recent, message to live page</span></div>
+      <div class="kachel"><b>{zahl(reise['median_minuten'], 'en')}<small> min</small></b><span>median across all of them</span></div>
+    </div>
+    <p class="einschraenkung">These numbers are measured too. Under every
+       lived-through entry over there stands its own timing — the timestamp of the
+       Telegram message and the timestamp of the commit that published it, both
+       taken from the Git history and checkable one by one. The median includes
+       the first four messages, which arrived before the page even existed; their
+       value contains the building of it. The most recent number is the
+       meaningful one.</p>
+    <p class="knopfzeile"><a class="knopf" href="{ziel}">Open the travel diary</a></p>
+  </div>
+</section>
+"""
+
+
+def _reise_abschnitt(reise: dict | None, sprache: str = "de") -> str:
     """Der laufende Beweis: eine Seite, die es ohne diesen Aufbau nicht gaebe.
 
     Alles andere hier ist Innenansicht — Zahlen ueber das eigene Repo. Dieser
@@ -449,6 +525,8 @@ def _reise_abschnitt(reise: dict | None) -> str:
     """
     if not reise:
         return ""
+    if sprache == "en":
+        return _reise_abschnitt_en(reise)
     return f"""
 <section class="bahn">
   <p class="kicker">Läuft gerade</p>
@@ -513,7 +591,76 @@ def _lies_konditionen() -> dict | None:
     }
 
 
-def _buchen_abschnitt(konditionen: dict | None) -> str:
+def _konditionen_en(konditionen: dict) -> list[tuple[str, str]]:
+    """Die Konditionen fuer englische Leser, ohne eine einzige neue Zahl.
+
+    Der Wert kommt aus `cv/data/konditionen.csv` und ist deutsch geschrieben
+    ("2.000 €/Tag (netto)", "ab 15.09.2026"). Uebersetzt wird nur die
+    Schreibweise, nie der Inhalt: 2.000 muss auf Englisch 2,000 heissen, sonst
+    liest es sich als zwei Euro. Passt ein Wert auf kein bekanntes Muster,
+    steht er unveraendert da — ein unuebersetzter Originalwert ist ein
+    Schoenheitsfehler, ein erfundener Tagessatz ist ein Schaden.
+    """
+    zeilen = []
+
+    verfuegbar = konditionen.get("verfuegbar", "")
+    if verfuegbar:
+        treffer = re.fullmatch(r"ab (\d{2})\.(\d{2})\.(\d{4})", verfuegbar.strip())
+        if treffer:
+            tag, monat, jahr = treffer.groups()
+            verfuegbar = f"from {int(tag)} {MONATE_EN[int(monat) - 1]} {jahr}"
+        zeilen.append(("Available", verfuegbar))
+
+    satz = konditionen["tagessatz"]
+    treffer = re.fullmatch(r"([\d.]+)\s*€/Tag\s*\(netto\)", satz.strip())
+    if treffer:
+        satz = f"€{treffer.group(1).replace('.', ',')}/day (net)"
+    zeilen.append(("Day rate", satz))
+
+    if konditionen.get("remote"):
+        zeilen.append(("Remote", konditionen["remote"]))
+    if konditionen.get("einsatzort"):
+        ort = konditionen["einsatzort"]
+        zeilen.append(("Based", {"weltweit": "worldwide"}.get(ort.strip().lower(), ort)))
+    return zeilen
+
+
+def _buchen_abschnitt_en(konditionen: dict | None) -> str:
+    tabelle = "".join(
+        f'<div class="kondition"><span>{name}</span><b>{wert}</b></div>'
+        for name, wert in (_konditionen_en(konditionen) if konditionen else [])
+    )
+    konditionen_html = f'<div class="konditionen">{tabelle}</div>' if tabelle else ""
+
+    return f"""
+<section class="bahn buchen" id="buchen">
+  <p class="kicker">Available for hire</p>
+  <h2>Jens Laufer — Forward Deployed Engineer</h2>
+  <p class="lead-klein">A Forward Deployed Engineer does not sit in product
+     development, he sits inside the customer's problem: he takes a model that
+     works in the demo and gets it to where the real data, the real workflows and
+     the real failures are. The part of that Jens likes most now has a name of its
+     own — <b>Harness Engineer</b>: not building the model, but building the
+     scaffolding around it in which it works unattended.</p>
+  <p>Solytics GmbH, Karlstein am Main, Germany. Around sixteen years of fullstack
+     engineering, freelance without interruption since 2009 — Java and Spring Boot
+     behind him, Vue in front, test-driven throughout; alongside that, data science
+     and machine learning as a second track. Since late 2025 almost nothing but
+     this: wake-up times, memory, channels, watchdogs, and a system's ability to
+     notice its own failure.</p>
+  <p>This page is the work sample. It is not described, it is built, every number
+     on it is measured, and the job for it came in by phone from the other side of
+     the planet.</p>
+  {konditionen_html}
+  <p class="knopfzeile">
+    <a class="knopf" href="{LINKEDIN}">Message on LinkedIn</a>
+    <a class="knopf knopf--leise" href="{LEBENSLAUF}">See the CV</a>
+  </p>
+</section>
+"""
+
+
+def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
     """Wofuer man Jens bucht, ab wann, und was es kostet.
 
     Der Abschnitt bleibt auch ohne Konditionen stehen — wer bis hierher gelesen
@@ -521,6 +668,8 @@ def _buchen_abschnitt(konditionen: dict | None) -> str:
     die Zeile mit dem Satz weg, denn die einzige Zahl auf dieser Seite, die
     nicht gemessen werden kann, darf auch nicht geraten werden.
     """
+    if sprache == "en":
+        return _buchen_abschnitt_en(konditionen)
     zeilen = []
     if konditionen:
         if konditionen.get("verfuegbar"):
@@ -567,39 +716,39 @@ def _buchen_abschnitt(konditionen: dict | None) -> str:
 """
 
 
-def rendere(zahlen: dict) -> str:
+def rendere(zahlen: dict, sprache: str = "de") -> str:
     pruefe_zahlen(zahlen)
-    vorlage = VORLAGE.read_text(encoding="utf-8")
+    vorlage = VORLAGEN[sprache].read_text(encoding="utf-8")
     css = CSS.read_text(encoding="utf-8")
 
     werte = {
         "CSS": css,
         "BASIS": zahlen.get("basis") or BASIS,
-        "NACHRICHTEN": zahl(zahlen["nachrichten"]),
-        "SITZUNGEN": zahl(zahlen["sitzungen"]),
-        "COMMITS": zahl(zahlen["commits_assistant"]),
-        "AUFTRAEGE": zahl(zahlen["auftraege"]),
-        "PRS": zahl(zahlen["prs"]),
-        "PR_REPOS": zahl(zahlen["pr_repos"]),
-        "KOAUTOR": zahl(zahlen["koautor_commits"]),
-        "KOAUTOR_REPOS": zahl(zahlen["koautor_repos"]),
-        "TAGE": zahl(zahlen["tage"]),
-        "WERKZEUGE": zahl(zahlen["werkzeuge"]),
-        "TESTS": zahl(zahlen["testfunktionen"]),
-        "CODEZEILEN": zahl(zahlen["codezeilen"]),
-        "UNITS": zahl(zahlen["units"]),
-        "SKILLS": zahl(zahlen["skills"]),
-        "WECKUNGEN": zahl(len(zahlen["weckzeiten_werktag"])),
-        "WECKUNGEN_WE": zahl(len(zahlen["weckzeiten_wochenende"])),
+        "NACHRICHTEN": zahl(zahlen["nachrichten"], sprache),
+        "SITZUNGEN": zahl(zahlen["sitzungen"], sprache),
+        "COMMITS": zahl(zahlen["commits_assistant"], sprache),
+        "AUFTRAEGE": zahl(zahlen["auftraege"], sprache),
+        "PRS": zahl(zahlen["prs"], sprache),
+        "PR_REPOS": zahl(zahlen["pr_repos"], sprache),
+        "KOAUTOR": zahl(zahlen["koautor_commits"], sprache),
+        "KOAUTOR_REPOS": zahl(zahlen["koautor_repos"], sprache),
+        "TAGE": zahl(zahlen["tage"], sprache),
+        "WERKZEUGE": zahl(zahlen["werkzeuge"], sprache),
+        "TESTS": zahl(zahlen["testfunktionen"], sprache),
+        "CODEZEILEN": zahl(zahlen["codezeilen"], sprache),
+        "UNITS": zahl(zahlen["units"], sprache),
+        "SKILLS": zahl(zahlen["skills"], sprache),
+        "WECKUNGEN": zahl(len(zahlen["weckzeiten_werktag"]), sprache),
+        "WECKUNGEN_WE": zahl(len(zahlen["weckzeiten_wochenende"]), sprache),
         "ZEITSTREIFEN": _zeitstreifen(zahlen["weckzeiten_werktag"]),
         "CPU": zahlen["cpu"],
-        "KERNE": zahl(zahlen["kerne"]),
-        "RAM": zahl(zahlen["ram_gb"]),
-        "START": _datum(zahlen["start"]),
-        "STAND": _datum(zahlen["stand"]),
+        "KERNE": zahl(zahlen["kerne"], sprache),
+        "RAM": zahl(zahlen["ram_gb"], sprache),
+        "START": _datum(zahlen["start"], sprache),
+        "STAND": _datum(zahlen["stand"], sprache),
         "NACHRICHTEN_PRO_TAG": f"{zahlen['nachrichten'] / max(zahlen['tage'], 1):.0f}",
-        "REISE": _reise_abschnitt(zahlen.get("reise")),
-        "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen")),
+        "REISE": _reise_abschnitt(zahlen.get("reise"), sprache),
+        "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen"), sprache),
     }
 
     seite = vorlage
@@ -611,23 +760,24 @@ def rendere(zahlen: dict) -> str:
     return seite
 
 
-def baue_og_bild(zahlen: dict, ziel: Path = None) -> Path | None:
+def baue_og_bild(zahlen: dict, ziel: Path = None, sprache: str = "de") -> Path | None:
     """Rendert die Vorschaukarte fuer LinkedIn (1200x630) mit Chromium.
 
     Die Karte traegt dieselben gemessenen Zahlen wie die Seite — eine
     handgepflegte Vorschau waere nach dem naechsten Build falsch, und niemand
     sieht Vorschaubilder je wieder an.
     """
-    ziel = ziel or (WURZEL / "og.png")
-    karte = OG_VORLAGE.read_text(encoding="utf-8")
+    ziel = ziel or (WURZEL / ("og.png" if sprache == "de" else "en/og.png"))
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    karte = OG_VORLAGEN[sprache].read_text(encoding="utf-8")
     for platzhalter, feld in (("NACHRICHTEN", "nachrichten"), ("SITZUNGEN", "sitzungen"),
                               ("AUFTRAEGE", "auftraege"), ("TAGE", "tage")):
-        karte = karte.replace("{{" + platzhalter + "}}", zahl(zahlen[feld]))
+        karte = karte.replace("{{" + platzhalter + "}}", zahl(zahlen[feld], sprache))
     karte = karte.replace("{{ZEITSTREIFEN}}", _zeitstreifen(zahlen["weckzeiten_werktag"]))
     pruefe_privat(karte)
 
     # Snap-Chromium darf weder nach /tmp noch in versteckte Ordner schreiben.
-    arbeit = Path.home() / "pdf-slim-work" / "harry"
+    arbeit = Path.home() / "pdf-slim-work" / "harry" / sprache
     arbeit.mkdir(parents=True, exist_ok=True)
     quelle = arbeit / "og-karte.html"
     quelle.write_text(karte, encoding="utf-8")
@@ -657,7 +807,18 @@ def schreibe(zahlen: dict, ziel: Path = None, zahlen_ziel: Path = None) -> str:
     """
     seite = rendere(zahlen)
     pruefe_privat(seite)
-    (ziel or ZIEL).write_text(seite, encoding="utf-8")
+    englisch = rendere(zahlen, "en")
+    # Beide Fassungen werden geprueft, bevor EINE geschrieben wird. Die
+    # englische ist derselbe Inhalt in anderen Worten — also dieselbe Gefahr,
+    # und eine ungeprueft geschriebene Fassung waere das Leck.
+    pruefe_privat(englisch)
+
+    ziel_de = ziel or ZIEL
+    ziel_de.write_text(seite, encoding="utf-8")
+    ziel_en = ziel_de.parent / "en" / "index.html"
+    ziel_en.parent.mkdir(parents=True, exist_ok=True)
+    ziel_en.write_text(englisch, encoding="utf-8")
+
     ziel_json = zahlen_ziel or ZAHLEN
     ziel_json.parent.mkdir(parents=True, exist_ok=True)
     ziel_json.write_text(
@@ -708,8 +869,9 @@ def main() -> int:
 
     try:
         if argumente.check:
-            pruefe_privat(rendere(zahlen))
-            print("geprüft: keine privaten Angaben, alle Messwerte vorhanden.")
+            for sprache in SPRACHEN:
+                pruefe_privat(rendere(zahlen, sprache))
+            print("geprüft (de + en): keine privaten Angaben, alle Messwerte vorhanden.")
             return 0
         seite = schreibe(zahlen)
     except (PrivatException, ZahlenException) as fehler:
@@ -717,17 +879,22 @@ def main() -> int:
         print("Es wurde nichts geschrieben.", file=sys.stderr)
         return 1
 
-    print(f"index.html: {len(seite.encode('utf-8'))} B, Stand {_datum(zahlen['stand'])}")
+    englisch = (ZIEL.parent / "en" / "index.html").read_text(encoding="utf-8")
+    print(f"index.html: {len(seite.encode('utf-8'))} B, "
+          f"en/index.html: {len(englisch.encode('utf-8'))} B, "
+          f"Stand {_datum(zahlen['stand'])}")
 
     if argumente.og:
-        bild = baue_og_bild(zahlen)
-        if bild:
-            print(f"og.png: {bild.stat().st_size} B")
-        else:
-            # Kein Abbruch: die Seite steht. Aber es muss auffallen, sonst zeigt
-            # LinkedIn wochenlang eine Vorschau mit alten Zahlen.
-            print("og.png NICHT gebaut (kein Chromium?) — Vorschau bleibt alt.", file=sys.stderr)
-            return 1
+        for sprache in SPRACHEN:
+            bild = baue_og_bild(zahlen, sprache=sprache)
+            if bild:
+                print(f"{bild.relative_to(WURZEL)}: {bild.stat().st_size} B")
+            else:
+                # Kein Abbruch: die Seite steht. Aber es muss auffallen, sonst
+                # zeigt LinkedIn wochenlang eine Vorschau mit alten Zahlen.
+                print(f"og.png ({sprache}) NICHT gebaut (kein Chromium?) — "
+                      "Vorschau bleibt alt.", file=sys.stderr)
+                return 1
     return 0
 
 
