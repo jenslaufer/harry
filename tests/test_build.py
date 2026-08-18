@@ -854,5 +854,81 @@ class TestRechtsseiten(unittest.TestCase):
                              "bei Abbruch darf nichts auf der Platte liegen")
 
 
+SCHWARM_BEISPIEL = {
+    "fertig": 650,
+    "tage": 104,
+    "spitze_stunde": 8,
+    "stunden_ab_drei": 43,
+}
+
+
+class TestSchwarm(unittest.TestCase):
+    """Der Abschnitt ueber die naechtlichen Bauauftraege.
+
+    Jens am 2026-08-17 06:59: „Vielleicht koennen wir auch noch zeigen, wie wir
+    beide mit agent swarms arbeiten." Dieselbe Regel wie fuer die Reise: ohne
+    Messung faellt der Abschnitt weg, statt eine Behauptung stehen zu lassen.
+    """
+
+    def test_ohne_messung_faellt_der_abschnitt_weg(self):
+        # Eine Seite, die einen Schwarm behauptet, den niemand nachzaehlen
+        # kann, ist schlechter als eine ohne den Abschnitt.
+        self.assertEqual("", build._schwarm_abschnitt(None))
+        self.assertEqual("", build._schwarm_abschnitt(None, "en"))
+
+    def test_zahlen_stehen_im_abschnitt(self):
+        html = build._schwarm_abschnitt(SCHWARM_BEISPIEL)
+        for wert in ("650", "104", "43"):
+            with self.subTest(wert=wert):
+                self.assertIn(wert, html)
+
+    def test_englische_fassung_trennt_tausender_englisch(self):
+        # Eine deutsche 1.234 liest ein englischer Leser als 1,234 — dieselbe
+        # Falle wie bei den uebrigen Zahlen der Seite.
+        gross = dict(SCHWARM_BEISPIEL, fertig=1650)
+        self.assertIn("1,650", build._schwarm_abschnitt(gross, "en"))
+        self.assertIn("1.650", build._schwarm_abschnitt(gross, "de"))
+
+    def test_englische_fassung_ist_englisch(self):
+        html = build._schwarm_abschnitt(SCHWARM_BEISPIEL, "en")
+        self.assertNotIn("Auftraege", html)
+        self.assertNotIn("Nacht-Runner", html)
+
+    def test_abschnitt_landet_auf_beiden_seiten(self):
+        zahlen = dict(ZAHLEN_BEISPIEL, schwarm=SCHWARM_BEISPIEL)
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                self.assertIn("650", build.rendere(zahlen, sprache))
+
+    def test_seite_baut_auch_ohne_schwarm_zahlen(self):
+        # Der Schluessel ist neu; eine zahlen.json von gestern hat ihn nicht,
+        # und ein Build, der daran stirbt, nimmt die ganze Seite mit.
+        seite = build.rendere(dict(ZAHLEN_BEISPIEL), "de")
+        self.assertNotIn("{{SCHWARM}}", seite)
+
+    def test_messung_zaehlt_erledigte_auftraege(self):
+        # „Task done:" schreibt der Runner selbst, wenn ein Auftrag durch ist.
+        # Format wie `git log --format=%ad|%s --date=format:%Y-%m-%d %H`.
+        log = ("2026-03-23 04|Task done: a\n2026-03-23 05|Task done: b\n"
+               "2026-03-23 05|task: c\n2026-03-24 09|Task done: d\n")
+        with unittest.mock.patch.object(build, "_git", return_value=log):
+            self.assertEqual(3, build._messe_schwarm()["fertig"])
+
+    def test_messung_ohne_git_gibt_none(self):
+        # Kein Repo, keine Zahl — nie eine 0, die wie ein Befund aussieht.
+        with unittest.mock.patch.object(build, "_git", return_value=None):
+            self.assertIsNone(build._messe_schwarm())
+
+    def test_spitze_stunde_zaehlt_gleichzeitige_abschluesse(self):
+        # Drei Abschluesse in derselben Stunde sind der Beleg fuer Parallelitaet;
+        # drei ueber drei Stunden sind es nicht.
+        log = ("2026-03-23 04|Task done: a\n2026-03-23 04|Task done: b\n"
+               "2026-03-23 04|Task done: c\n2026-04-01 09|Task done: d\n")
+        with unittest.mock.patch.object(build, "_git", return_value=log):
+            gemessen = build._messe_schwarm()
+        self.assertEqual(3, gemessen["spitze_stunde"])
+        self.assertEqual(1, gemessen["stunden_ab_drei"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

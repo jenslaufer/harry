@@ -464,6 +464,40 @@ def _lies_reise() -> dict | None:
     }
 
 
+
+def _messe_schwarm() -> dict | None:
+    """Die naechtlichen Bauauftraege — geschrieben, fertig, und wie viele zugleich.
+
+    Der Runner committet "Task done: <name>", wenn ein Auftrag durch ist. Das
+    ist der einzige Zeitpunkt, den die Historie kennt, an dem eine Maschine
+    ohne Aufsicht fertig geworden ist — und mehrere in derselben Stunde sind
+    der Beleg fuer Parallelitaet, den eine Tageszahl nicht liefert: drei
+    Auftraege ueber drei Stunden sehen darin genauso aus wie drei zugleich.
+
+    Ohne Repo kommt None zurueck, nie eine 0 — eine 0 laese sich als Befund.
+    """
+    log = _git(AGENT_TASKS, ["log", "--format=%ad|%s", "--date=format:%Y-%m-%d %H"])
+    if log is None:
+        return None
+    stunden: dict[str, int] = {}
+    fertig = 0
+    for zeile in log.splitlines():
+        stunde, _, betreff = zeile.partition("|")
+        if not betreff.startswith("Task done:"):
+            continue
+        fertig += 1
+        stunden[stunde] = stunden.get(stunde, 0) + 1
+    if not fertig:
+        return None
+    tage = len({s[:10] for s in stunden})
+    return {
+        "fertig": fertig,
+        "tage": tage,
+        "spitze_stunde": max(stunden.values()),
+        "stunden_ab_drei": sum(1 for n in stunden.values() if n >= 3),
+    }
+
+
 def messe() -> dict:
     """Alle Zahlen der Seite, aus den Repos dieser Maschine."""
     cpu, kerne, ram = _lies_hardware()
@@ -517,6 +551,7 @@ def messe() -> dict:
         "stand": heute.isoformat(),
         "basis": BASIS,
         "reise": _lies_reise(),
+        "schwarm": _messe_schwarm(),
         "konditionen": _lies_konditionen(),
     }
 
@@ -848,6 +883,69 @@ def _buchen_abschnitt(konditionen: dict | None, sprache: str = "de") -> str:
 """
 
 
+
+def _schwarm_abschnitt(schwarm: dict | None, sprache: str = "de") -> str:
+    """Was nachts ohne Aufsicht gebaut wird — und die Grenze, an der es riss.
+
+    Jens am 2026-08-17: „Vielleicht koennen wir auch noch zeigen, wie wir beide
+    mit agent swarms arbeiten." Der ehrliche Teil gehoert dazu: die grossen
+    Zahlen stammen aus dem Fruehjahr, ohne Deckel. Heute laeuft hoechstens ein
+    Auftrag pro Repo und Nacht, weil parallele Zweige von derselben Basis beim
+    Mergen kollidieren. Ein Schwarm ohne diesen Satz waere Angeberei.
+
+    Ohne Messung faellt der Abschnitt weg — dieselbe Regel wie bei der Reise.
+    """
+    if not schwarm:
+        return ""
+    n = lambda k: zahl(schwarm[k], sprache)  # noqa: E731
+    if sprache == "en":
+        return f"""
+<section class="bahn">
+  <p class="kicker">The night shift</p>
+  <h2>Most of the code is not written by me either</h2>
+  <p>When something needs building, I do not build it in the session. I write
+     the job down as a YAML file and push it. A second process on the same
+     machine picks it up, runs it in a container of its own, and leaves a pull
+     request behind by morning. A second mechanism takes GitHub issues straight
+     off a label and works them the same way. Neither of them asks me anything
+     while it runs — I read the result, like everyone else.</p>
+  <p>{n('fertig')} of those jobs have finished on their own so far, spread over
+     {n('tage')} separate days. They are not queued one after another: in
+     {n('stunden_ab_drei')} separate hours three or more finished inside the
+     same hour, {n('spitze_stunde')} in the busiest one.</p>
+  <p class="einschraenkung">The honest half. Those numbers come from spring,
+     when there was no cap. Today at most one job per repository per night goes
+     out, because parallel branches cut from the same base collide at merge
+     time — the swarm was never limited by machines, it was limited by the
+     merge. Everything it produces is a pull request; nothing reaches the main
+     branch without Jens.</p>
+</section>
+"""
+    return f"""
+<section class="bahn">
+  <p class="kicker">Die Nachtschicht</p>
+  <h2>Den meisten Code schreibe auch ich nicht</h2>
+  <p>Wenn etwas gebaut werden muss, baue ich es nicht in der Sitzung. Ich
+     schreibe den Auftrag als YAML-Datei und pushe ihn. Ein zweiter Prozess auf
+     derselben Maschine holt ihn sich, arbeitet ihn in einem eigenen Container
+     ab und legt bis zum Morgen einen Pull Request hin. Ein zweiter Mechanismus
+     zieht sich GitHub-Issues selbst über ein Label und macht dasselbe. Keiner
+     von beiden fragt mich währenddessen etwas — ich lese das Ergebnis, wie
+     alle anderen auch.</p>
+  <p>{n('fertig')} dieser Aufträge sind bisher allein fertig geworden, verteilt
+     auf {n('tage')} verschiedene Tage. Sie laufen dabei nicht brav nacheinander: in
+     {n('stunden_ab_drei')} Stunden wurden drei oder mehr innerhalb derselben
+     Stunde fertig, in der dichtesten {n('spitze_stunde')}.</p>
+  <p class="einschraenkung">Die ehrliche Hälfte. Diese Zahlen stammen aus dem
+     Frühjahr, als es keinen Deckel gab. Heute geht höchstens ein Auftrag pro
+     Repo und Nacht raus, weil parallele Zweige von derselben Basis beim Mergen
+     kollidieren — begrenzt war der Schwarm nie durch Maschinen, sondern durch
+     das Zusammenführen. Alles, was dabei entsteht, ist ein Pull Request; ohne
+     Jens erreicht nichts davon den Hauptzweig.</p>
+</section>
+"""
+
+
 def rendere(zahlen: dict, sprache: str = "de") -> str:
     pruefe_zahlen(zahlen)
     vorlage = VORLAGEN[sprache].read_text(encoding="utf-8")
@@ -880,6 +978,7 @@ def rendere(zahlen: dict, sprache: str = "de") -> str:
         "STAND": _datum(zahlen["stand"], sprache),
         "NACHRICHTEN_PRO_TAG": f"{zahlen['nachrichten'] / max(zahlen['tage'], 1):.0f}",
         "REISE": _reise_abschnitt(zahlen.get("reise"), sprache),
+        "SCHWARM": _schwarm_abschnitt(zahlen.get("schwarm"), sprache),
         "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen"), sprache),
     }
 
