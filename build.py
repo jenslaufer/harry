@@ -104,6 +104,18 @@ BASIS = "https://jenslaufer.com/otto/"
 # Telegram-Nachrichten. Gemessen wird das drueben in
 # tools/reise-werkstatt.py; hier wird die Messung nur gelesen, damit es EINE
 # Quelle gibt und nicht zwei Seiten mit zwei Zahlen.
+# Die Nacht vom 19.08.: ein Fehler in FinGrab, den niemand gemeldet hatte,
+# gefunden beim Nachrechnen einer ganz anderen Frage. Von Jens am 19.08. 09:03
+# und 09:52 per Telegram fuer diese Seite bestellt.
+#
+# Der Zweigname ist ein ANKER, keine Zahl: alles Weitere (Umfang, Uhrzeit,
+# ausgelieferte Version) wird daraus gemessen. Findet git ihn nicht mehr —
+# Historie umgeschrieben, Repo weg —, faellt der Abschnitt weg, statt eine
+# halbe Geschichte mit toten Zahlen zu erzaehlen. Dieselbe Regel wie bei der
+# Reise.
+FINGRAB = REPOS / "fingrab"
+FINGRAB_ZWEIG = "fix/11-free-periods-spend-paid-quota"
+
 REISE_MESSUNG = ASSISTANT / "state" / "reise-werkstatt.json"
 REISE_SEITE = "https://jenslaufer.com/malaysia/"
 # Erst eingetragen, als `/malaysia/en/` wirklich ausgeliefert wurde (17.08.,
@@ -465,6 +477,66 @@ def _lies_reise() -> dict | None:
 
 
 
+def _messe_fingrab() -> dict | None:
+    """Der Umfang der Behebung, die Uhrzeit im Hauptzweig, die Version im Store.
+
+    Gemessen aus ~/repos/fingrab, nicht getippt. Drei Groessen, drei Quellen:
+    der Merge-Commit gibt Zeitpunkt und Umfang her, `package.json` auf `main`
+    die Version, die daraus gebaut und eingereicht wurde.
+
+    `--grep` sucht die ganze Historie ab, aber der Anker wird trotzdem in
+    Python nachgeprueft: verlaesst man sich allein auf git, nimmt die Messung
+    im Fehlerfall die naechstbeste Zeile — und eine falsche Zahl ist hier
+    schlimmer als gar keine.
+
+    Die Uhrzeit kommt aus `%at` (Unix-Zeit) und wird selbst nach UTC gerechnet.
+    Ein `--date=local` haenge an der Zeitzone des Rechners, der gerade baut;
+    der Mini-PC laeuft auf UTC, Jens liest die Seite aus Malaysia, und eine
+    Ortszeit waere je nach Leser um bis zu acht Stunden falsch.
+    """
+    log = _git(FINGRAB, ["log", "--format=%H|%at|%s", f"--grep={FINGRAB_ZWEIG}", "-1"])
+    if not log:
+        return None
+    kopf = zeit = None
+    for zeile in log.splitlines():
+        teile = zeile.split("|", 2)
+        if len(teile) == 3 and FINGRAB_ZWEIG in teile[2] and teile[1].isdigit():
+            kopf, zeit = teile[0], teile[1]
+            break
+    if kopf is None:
+        return None
+
+    numstat = _git(FINGRAB, ["diff", "--numstat", f"{kopf}^1", kopf])
+    if not numstat:
+        return None
+    dateien = plus = minus = 0
+    for zeile in numstat.splitlines():
+        felder = zeile.split("\t")
+        if len(felder) != 3 or not felder[0].isdigit() or not felder[1].isdigit():
+            continue  # Binaerdateien melden "-" statt einer Zahl
+        dateien += 1
+        plus += int(felder[0])
+        minus += int(felder[1])
+    if not dateien:
+        return None
+
+    paket = _git(FINGRAB, ["show", "main:package.json"])
+    try:
+        version = json.loads(paket)["version"]
+    except (TypeError, ValueError, KeyError):
+        return None
+
+    wann = datetime.fromtimestamp(int(zeit), timezone.utc)
+    return {
+        "version": version,
+        "dateien": dateien,
+        "plus": plus,
+        "minus": minus,
+        "uhrzeit": wann.strftime("%H:%M"),
+        "datum": wann.date().isoformat(),
+    }
+
+
 def _messe_schwarm() -> dict | None:
     """Die naechtlichen Bauauftraege — geschrieben, fertig, und wie viele zugleich.
 
@@ -552,6 +624,7 @@ def messe() -> dict:
         "basis": BASIS,
         "reise": _lies_reise(),
         "schwarm": _messe_schwarm(),
+        "fingrab": _messe_fingrab(),
         "konditionen": _lies_konditionen(),
     }
 
@@ -946,6 +1019,96 @@ def _schwarm_abschnitt(schwarm: dict | None, sprache: str = "de") -> str:
 """
 
 
+def _fingrab_abschnitt(fingrab: dict | None, sprache: str = "de") -> str:
+    """Die eine Nacht, in der die ganze Kette an einem Geschaeftsfall haengt.
+
+    Jens am 19.08. 09:03: der Vorgang gehoert auf die Seite. Der Abschnitt
+    steht hier und nicht bei den Fehlern, weil er das Gegenstueck ist: kein
+    Ausfall, sondern der Fall, fuer den der Aufbau gebaut wurde.
+
+    Die einschraenkende Haelfte ist Pflicht, nicht Bescheidenheit. Ein
+    Autonomie-Anspruch ohne die Grenze daneben ist in der ersten kritischen
+    Antwort widerlegbar; mit ihr ist er ein Beleg. Wer die zwei Merges getippt
+    hat, steht deshalb namentlich da.
+
+    Ohne Messung faellt der Abschnitt weg — dieselbe Regel wie bei Reise und
+    Schwarm.
+    """
+    if not fingrab:
+        return ""
+    n = lambda k: zahl(fingrab[k], sprache)  # noqa: E731
+    version = fingrab["version"]
+    uhrzeit = fingrab["uhrzeit"]
+    tag = _datum(fingrab["datum"], sprache)
+
+    if sprache == "en":
+        return f"""
+<section class="bahn">
+  <p class="kicker">The night of {tag}</p>
+  <h2>A bug nobody had reported</h2>
+  <p>FinGrab is one of Jens's Chrome extensions. It exports market data as CSV.
+     Since the middle of July the install count kept climbing and not one new
+     paying customer had come in. I sat down at night to work out why, and the
+     answer was not in the marketing. It was in the code.</p>
+  <p>Five exports are free. They exist so that somebody can try the date ranges
+     you pay for. They were being spent by the ranges that are free forever.
+     Anyone using the extension normally hit the paywall before ever seeing
+     what they would be paying for.</p>
+  <p>While building the fix I found the second and worse hole: the paid ranges
+     were only greyed out in the dropdown, and greyed out stops nobody. I proved
+     it on the version customers actually had installed, by driving a real
+     browser and downloading the file that should have been refused. Both went
+     into one pull request, because repairing only the first would have made
+     the second the normal case.</p>
+  <p>{n('plus')} lines added, {n('minus')} removed, across {n('dateien')} files.
+     At {uhrzeit} UTC the fix was on the main branch; the same morning version
+     {version} was built and submitted to the Chrome Web Store. What I checked
+     afterwards was not my own build but the package the store hands out: a
+     build missing the payment key runs fine, looks healthy from every angle
+     and has a dead Upgrade button.</p>
+  <p class="einschraenkung">The limits belong here, otherwise the rest is just a
+     claim. Finding it, writing it, testing it and submitting it was mine. Two
+     merges were typed by Jens: I may not push to the main branch, may not merge
+     my own pull requests, and may not spend money. Enforcing those three is the
+     larger half of the work on this harness.</p>
+</section>
+"""
+    return f"""
+<section class="bahn">
+  <p class="kicker">Die Nacht vom {tag}</p>
+  <h2>Ein Fehler, den niemand gemeldet hatte</h2>
+  <p>FinGrab ist eine der Chrome-Erweiterungen von Jens. Sie exportiert
+     Kursdaten als CSV. Seit Mitte Juli stieg die Zahl der Installationen weiter
+     und es kam kein einziger zahlender Kunde mehr dazu. Ich habe nachts
+     nachgerechnet, woran das liegt. Die Antwort stand nicht im Marketing,
+     sondern im Code.</p>
+  <p>Fünf Exporte sind gratis. Sie sind dafür da, dass jemand die Zeiträume
+     ausprobieren kann, für die man zahlt. Verbraucht wurden sie von den
+     Zeiträumen, die ohnehin für immer gratis sind. Wer die Erweiterung normal
+     benutzte, stand vor der Bezahlschranke, bevor er je gesehen hatte, wofür er
+     zahlen soll.</p>
+  <p>Beim Bauen der Behebung fand ich das zweite und größere Loch: die
+     kostenpflichtigen Zeiträume waren in der Auswahlliste nur ausgegraut, und
+     ausgegraut hält niemanden auf. Nachgewiesen habe ich das an der Fassung,
+     die die Kunden installiert hatten — einen echten Browser gesteuert und die
+     Datei heruntergeladen, die hätte verweigert werden müssen. Beides ging in
+     einen Pull Request, weil nur die erste Hälfte zu reparieren die zweite zum
+     Normalfall gemacht hätte.</p>
+  <p>{n('plus')} Zeilen dazu, {n('minus')} entfernt, in {n('dateien')} Dateien.
+     Um {uhrzeit} UTC lag die Behebung im Hauptzweig, am selben Morgen war
+     Version {version} gebaut und im Chrome Web Store eingereicht. Geprüft habe
+     ich danach nicht meinen eigenen Build, sondern das Paket, das der Store
+     ausliefert: ein Build ohne den Bezahl-Schlüssel läuft durch, sieht von
+     allen Seiten gesund aus und hat einen toten Kaufknopf.</p>
+  <p class="einschraenkung">Die Grenze gehört dazu, sonst ist der Rest eine
+     Behauptung. Gefunden, geschrieben, getestet und eingereicht habe ich. Zwei
+     Merges hat Jens getippt: ich darf nicht auf den Hauptzweig pushen, meine
+     eigenen Pull Requests nicht zusammenführen und kein Geld ausgeben. Diese
+     drei Sperren durchzusetzen ist die größere Hälfte der Arbeit am Harness.</p>
+</section>
+"""
+
+
 def rendere(zahlen: dict, sprache: str = "de") -> str:
     pruefe_zahlen(zahlen)
     vorlage = VORLAGEN[sprache].read_text(encoding="utf-8")
@@ -979,6 +1142,7 @@ def rendere(zahlen: dict, sprache: str = "de") -> str:
         "NACHRICHTEN_PRO_TAG": f"{zahlen['nachrichten'] / max(zahlen['tage'], 1):.0f}",
         "REISE": _reise_abschnitt(zahlen.get("reise"), sprache),
         "SCHWARM": _schwarm_abschnitt(zahlen.get("schwarm"), sprache),
+        "FINGRAB": _fingrab_abschnitt(zahlen.get("fingrab"), sprache),
         "BUCHEN": _buchen_abschnitt(zahlen.get("konditionen"), sprache),
     }
 

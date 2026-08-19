@@ -53,6 +53,33 @@ The measured quantity is the one an FDE buyer actually cares about: **from the
 request to the published artifact.** Not "an agent exists" — how long, measured,
 per entry, in git.
 
+## The one section anchored to a single night
+
+`_messe_fingrab()` renders the FinGrab paywall fix of 2026-08-19 — the one place
+on the page where the whole chain (found unprompted → issue → tests → fix →
+release → verified against the *shipped* package) hangs on a business case
+rather than on the page's own repos.
+
+The anchor is `FINGRAB_ZWEIG`, a **branch name**, not a number. Scope (files,
+lines added/removed), the UTC time the fix reached `main` and the version on
+`main` are all measured from it at build time. Lose the anchor — history
+rewritten, repo gone — and the section disappears, like the travel section: half
+a story with dead numbers is worse than no story.
+
+Two details are deliberate. The time comes from `%at` and is converted to UTC in
+Python, never `--date=local`: the mini-PC builds in UTC and Jens reads the page
+from Asia, so a local time is wrong by up to eight hours depending on the reader.
+And the anchor is re-checked in Python after `--grep` has already filtered — a
+parser that trusts git's `-1` takes the next-best line when the grep misses, and
+a wrong number here is worse than none. That was a real bug, caught by
+`TestFingrab.test_uhrzeit_ist_utc_und_nicht_die_zeitzone_des_rechners`.
+
+The section states what Otto may **not** do (push to `main`, merge its own pull
+requests, spend money) and names Jens as the one who typed the two merges. That
+half is load-bearing, not modesty: an autonomy claim without its limits is
+refutable in the first critical reply; with them it is evidence. A test asserts
+the limits are present in both languages.
+
 ## The blocklist lives outside this repo — on purpose
 
 `pruefe_privat()` aborts the build if a passport number, IBAN, e-mail address or

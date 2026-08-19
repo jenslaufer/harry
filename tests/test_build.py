@@ -930,5 +930,155 @@ class TestSchwarm(unittest.TestCase):
         self.assertEqual(1, gemessen["stunden_ab_drei"])
 
 
+FINGRAB_BEISPIEL = {
+    "version": "2.0.7",
+    "dateien": 8,
+    "plus": 674,
+    "minus": 144,
+    "uhrzeit": "03:26",
+    "datum": "2026-08-19",
+}
+
+
+class TestFingrab(unittest.TestCase):
+    """Die Nacht, in der ein Fehler auffiel, den niemand gemeldet hatte.
+
+    Jens am 19.08. 09:03 und 09:52 per Telegram: der Vorgang gehoert auf diese
+    Seite. Dieselben zwei Regeln wie ueberall sonst hier: die Zahlen werden aus
+    der Historie von ~/repos/fingrab gemessen statt getippt, und ohne Messung
+    faellt der Abschnitt weg statt eine tote Zahl weiterzutragen.
+    """
+
+    LOG = (
+        "aaa1|1787109865|Charge the free quota only for the ranges behind the paywall\n"
+        "bbb2|1787110008|Merge pull request #12 from jenslaufer/"
+        + "fix/11-free-periods-spend-paid-quota\n"
+        "ccc3|1786715130|Declare the paths the hand-test gate watches\n"
+    )
+    NUMSTAT = ("36\t4\tREADME.md\n1\t1\tpackage.json\n41\t19\tpages/Overlay.vue\n"
+               "11\t118\tscripts/export-e2e.mjs\n130\t0\tscripts/lib/overlay-cdp.mjs\n"
+               "303\t0\tscripts/quota-gate-e2e.mjs\n103\t1\ttests/quota.test.js\n"
+               "49\t1\tutils/quota.js\n")
+    PAKET = '{"name": "fingrab", "version": "2.0.7"}'
+
+    def _git(self, argumente):
+        """Stellt die drei Aufrufe, die die Messung macht."""
+        if argumente[0] == "log":
+            return self.LOG
+        if argumente[0] == "diff":
+            return self.NUMSTAT
+        if argumente[0] == "show":
+            return self.PAKET
+        return None
+
+    def test_ohne_repo_gibt_none_statt_null(self):
+        # Kein Repo, keine Zahl. Eine 0 laese sich als Befund.
+        with unittest.mock.patch.object(build, "_git", return_value=None):
+            self.assertIsNone(build._messe_fingrab())
+
+    def test_ohne_den_anker_faellt_die_messung_aus(self):
+        # Wird der Zweig irgendwann umgeschrieben, verschwindet der Abschnitt,
+        # statt eine halb gemessene Geschichte zu erzaehlen.
+        ohne = "aaa1|1787109865|irgendein anderer Commit\n"
+        with unittest.mock.patch.object(build, "_git",
+                                        side_effect=lambda p, a: ohne if a[0] == "log" else None):
+            self.assertIsNone(build._messe_fingrab())
+
+    def test_misst_umfang_aus_der_historie(self):
+        with unittest.mock.patch.object(build, "_git",
+                                        side_effect=lambda p, a: self._git(a)):
+            gemessen = build._messe_fingrab()
+        self.assertEqual(8, gemessen["dateien"])
+        self.assertEqual(674, gemessen["plus"])
+        self.assertEqual(144, gemessen["minus"])
+        self.assertEqual("2.0.7", gemessen["version"])
+
+    def test_uhrzeit_ist_utc_und_nicht_die_zeitzone_des_rechners(self):
+        # Der Mini-PC laeuft auf UTC, Jens liest die Seite aus Malaysia. Eine
+        # Ortszeit waere je nach Leser um bis zu acht Stunden falsch.
+        with unittest.mock.patch.object(build, "_git",
+                                        side_effect=lambda p, a: self._git(a)):
+            gemessen = build._messe_fingrab()
+        self.assertEqual("03:26", gemessen["uhrzeit"])
+        self.assertEqual("2026-08-19", gemessen["datum"])
+
+    def test_ohne_messung_faellt_der_abschnitt_weg(self):
+        self.assertEqual("", build._fingrab_abschnitt(None))
+        self.assertEqual("", build._fingrab_abschnitt(None, "en"))
+
+    def test_abschnitt_nennt_die_gemessenen_zahlen(self):
+        html = build._fingrab_abschnitt(FINGRAB_BEISPIEL)
+        for wert in ("674", "144", "2.0.7", "03:26"):
+            with self.subTest(wert=wert):
+                self.assertIn(wert, html)
+
+    def test_abschnitt_nennt_die_grenze_nicht_nur_die_leistung(self):
+        # Der Grund, warum dieser Abschnitt ueberhaupt tragfaehig ist: er sagt
+        # dazu, was ich NICHT darf. Ein Autonomie-Anspruch ohne die Grenze ist
+        # in der ersten kritischen Antwort widerlegbar.
+        for sprache, worte in (("de", ("Hauptzweig", "Jens")),
+                               ("en", ("main branch", "Jens"))):
+            html = build._fingrab_abschnitt(FINGRAB_BEISPIEL, sprache)
+            for wort in worte:
+                with self.subTest(sprache=sprache, wort=wort):
+                    self.assertIn(wort, html)
+
+    def test_englische_fassung_ist_englisch(self):
+        html = build._fingrab_abschnitt(FINGRAB_BEISPIEL, "en")
+        self.assertNotIn("Fehler", html)
+        self.assertNotIn("Hauptzweig", html)
+
+    def test_englische_fassung_trennt_tausender_englisch(self):
+        gross = dict(FINGRAB_BEISPIEL, plus=1674)
+        self.assertIn("1,674", build._fingrab_abschnitt(gross, "en"))
+        self.assertIn("1.674", build._fingrab_abschnitt(gross, "de"))
+
+    def test_abschnitt_landet_auf_beiden_seiten(self):
+        zahlen = dict(ZAHLEN_BEISPIEL, fingrab=FINGRAB_BEISPIEL)
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                self.assertIn("2.0.7", build.rendere(zahlen, sprache))
+
+    def test_seite_baut_auch_ohne_fingrab_zahlen(self):
+        # Eine zahlen.json von gestern kennt den Schluessel nicht, und ein
+        # Build, der daran stirbt, nimmt die ganze Seite mit.
+        for sprache in ("de", "en"):
+            with self.subTest(sprache=sprache):
+                self.assertNotIn("{{FINGRAB}}", build.rendere(dict(ZAHLEN_BEISPIEL), sprache))
+
+    def test_abschnitt_hat_keine_ascii_umschrift(self):
+        klein = TestEchteUmlaute.sichtbar(build._fingrab_abschnitt(FINGRAB_BEISPIEL))
+        for wort in TestEchteUmlaute.UMSCHRIFT:
+            self.assertNotIn(wort, klein, f"ASCII-Umschrift im Abschnitt: {wort!r}")
+
+
+class TestKeinChat(unittest.TestCase):
+    """Der Abschnitt, der den Aufbau gegen einen Chat abgrenzt.
+
+    Jens am 19.08. 09:03: „Die Leute, die heute ueber AI sprechen, sind
+    gewohnt, dass es ein Chat mit Prompts ist." Der Test misst die ABWESENHEIT
+    des alten Zustands: ohne ihn faellt ein spaeter geloeschter Abschnitt nicht
+    auf, weil die Seite trotzdem rendert und vollstaendig aussieht.
+    """
+
+    def test_deutsche_seite_grenzt_gegen_den_chat_ab(self):
+        seite = build.rendere(ZAHLEN_BEISPIEL)
+        self.assertIn("Chat", seite)
+        self.assertIn("Eigeninitiative", seite)
+
+    def test_englische_seite_grenzt_gegen_den_chat_ab(self):
+        seite = build.rendere(ZAHLEN_BEISPIEL, "en")
+        self.assertIn("chat", seite.lower())
+        self.assertIn("initiative", seite.lower())
+
+    def test_abschnitt_nennt_die_werkzeugkette_nicht_nur_die_haltung(self):
+        # „Agentisch" ohne die Kette ist eine Behauptung. Die Kette ist der
+        # Beleg: Postfach, Zahlungen, Store, Deployment.
+        seite = build.rendere(ZAHLEN_BEISPIEL)
+        for wort in ("Postf", "Store", "Zahlung"):
+            with self.subTest(wort=wort):
+                self.assertIn(wort, seite)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
